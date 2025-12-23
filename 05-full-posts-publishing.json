@@ -1,0 +1,478 @@
+{
+  "name": "05 - Посты полные (Full Posts Publishing & Analytics)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 2
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger-publish",
+      "name": "Schedule Trigger2 (Deactivated)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [250, 700]
+    },
+    {
+      "parameters": {
+        "documentId": "={{$env.GOOGLE_SHEET_ID}}",
+        "sheetName": "generated_posts",
+        "operation": "read",
+        "options": {
+          "filters": {
+            "filter": [
+              {
+                "field": "published",
+                "condition": "notEquals",
+                "value": "true"
+              },
+              {
+                "field": "status",
+                "condition": "equals",
+                "value": "ready"
+              }
+            ]
+          }
+        }
+      },
+      "id": "google-sheets-get-posts",
+      "name": "Google Sheets6",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [470, 700]
+    },
+    {
+      "parameters": {
+        "operation": "sort",
+        "sortFieldsUi": {
+          "sortField": [
+            {
+              "fieldName": "priority",
+              "order": "descending"
+            },
+            {
+              "fieldName": "created_at",
+              "order": "ascending"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "sort-posts",
+      "name": "Sort2",
+      "type": "n8n-nodes-base.sort",
+      "typeVersion": 1,
+      "position": [690, 700]
+    },
+    {
+      "parameters": {
+        "operation": "limit",
+        "maxItems": 5,
+        "options": {}
+      },
+      "id": "limit-posts",
+      "name": "Limit4",
+      "type": "n8n-nodes-base.limit",
+      "typeVersion": 1,
+      "position": [910, 700]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Оптимальное время для постинга на основе статистики\nconst stats = await $('Google Sheets').getAll({\n  sheetName: 'post_statistics',\n  options: {}\n});\n\n// Анализируем, в какое время лучшая вовлеченность\nconst hourlyStats = {};\nstats.forEach(stat => {\n  const hour = new Date(stat.published_at).getHours();\n  if (!hourlyStats[hour]) {\n    hourlyStats[hour] = { total: 0, engagement: 0 };\n  }\n  hourlyStats[hour].total++;\n  hourlyStats[hour].engagement += stat.engagement_rate;\n});\n\n// Находим лучшее время\nlet bestHour = 12; // По умолчанию\nlet bestEngagement = 0;\n\nfor (const [hour, data] of Object.entries(hourlyStats)) {\n  const avgEngagement = data.engagement / data.total;\n  if (avgEngagement > bestEngagement) {\n    bestEngagement = avgEngagement;\n    bestHour = parseInt(hour);\n  }\n}\n\nconst currentHour = new Date().getHours();\nconst shouldPublishNow = Math.abs(currentHour - bestHour) <= 1;\n\nreturn {\n  json: {\n    ...($input.item.json),\n    best_hour: bestHour,\n    should_publish_now: shouldPublishNow,\n    current_hour: currentHour\n  }\n};"
+      },
+      "id": "code-optimal-time",
+      "name": "Code2",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1130, 700]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "should-publish",
+              "leftValue": "={{$json.should_publish_now}}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-time-optimal",
+      "name": "Code2",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1350, 700]
+    },
+    {
+      "parameters": {
+        "operation": "text",
+        "text": "={{$json.post_text + '\\n\\n' + $json.hashtags + '\\n\\n' + $json.call_to_action}}",
+        "additionalFields": {}
+      },
+      "id": "basic-llm-chain-optimizer",
+      "name": "Basic LLM Chain",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.4,
+      "position": [1570, 500]
+    },
+    {
+      "parameters": {
+        "url": "={{$env.THREADS_API_URL}}/posts",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "text",
+              "value": "={{$json.post_text + '\\n\\n' + $json.hashtags + '\\n\\n' + $json.call_to_action}}"
+            },
+            {
+              "name": "user_id",
+              "value": "={{$env.THREADS_USER_ID}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "threads-api-post",
+      "name": "Make Threads upload2",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1790, 700]
+    },
+    {
+      "parameters": {
+        "documentId": "={{$env.GOOGLE_SHEET_ID}}",
+        "sheetName": "generated_posts",
+        "dataMode": "autoMapInputData",
+        "columnToMatchOn": "id",
+        "valueOfColumnToMatchOn": "={{$json.id}}",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "published",
+              "fieldValue": "true"
+            },
+            {
+              "fieldId": "published_at",
+              "fieldValue": "={{$now.toISO()}}"
+            },
+            {
+              "fieldId": "threads_post_id",
+              "fieldValue": "={{$json.threads_response.id}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "google-sheets-update-published",
+      "name": "Google Sheets2",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [2010, 700]
+    },
+    {
+      "parameters": {
+        "content": "=✅ Пост опубликован!\n\n{{$json.post_text}}\n\nThreads ID: {{$json.threads_post_id}}\nВремя: {{$json.published_at}}",
+        "chatId": "={{$env.TELEGRAM_MONITORING_CHAT_ID}}",
+        "additionalFields": {}
+      },
+      "id": "telegram-notify-published",
+      "name": "Telegram2",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [2230, 700]
+    },
+    {
+      "parameters": {
+        "triggerOn": "webhook"
+      },
+      "id": "webhook-threads",
+      "name": "Structured Output Parser",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 1100]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Webhook от Threads с аналитикой\nconst data = $input.item.json.body;\n\nreturn {\n  json: {\n    threads_post_id: data.post_id,\n    views: data.impressions || 0,\n    likes: data.likes || 0,\n    comments: data.comments || 0,\n    shares: data.shares || 0,\n    engagement_rate: ((data.likes + data.comments * 2 + data.shares * 3) / data.impressions * 100) || 0,\n    timestamp: new Date().toISOString()\n  }\n};"
+      },
+      "id": "code-parse-analytics",
+      "name": "OpenAI Chat Model",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [470, 1100]
+    },
+    {
+      "parameters": {
+        "documentId": "={{$env.GOOGLE_SHEET_ID}}",
+        "sheetName": "post_statistics",
+        "columns": {
+          "mappingMode": "autoMapInputData"
+        },
+        "options": {}
+      },
+      "id": "google-sheets-save-stats",
+      "name": "Google Sheets1",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [690, 1100]
+    },
+    {
+      "parameters": {
+        "documentId": "={{$env.GOOGLE_SHEET_ID}}",
+        "sheetName": "generated_posts",
+        "operation": "read",
+        "options": {
+          "filters": {
+            "filter": [
+              {
+                "field": "threads_post_id",
+                "condition": "equals",
+                "value": "={{$json.threads_post_id}}"
+              }
+            ]
+          }
+        }
+      },
+      "id": "google-sheets-get-post-info",
+      "name": "Google Sheets1",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [910, 1100]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Анализируем эффективность паттерна\nconst post = $input.first().json;\nconst stats = $input.last().json;\n\n// Получаем все статистики этого паттерна\nconst allStats = await $('Google Sheets').getAll({\n  sheetName: 'post_statistics',\n  options: {\n    filters: [\n      { field: 'pattern_type', condition: 'equals', value: post.pattern_type }\n    ]\n  }\n});\n\n// Вычисляем среднюю эффективность\nconst avgEngagement = allStats.reduce((sum, s) => sum + s.engagement_rate, 0) / allStats.length;\n\n// Определяем, нужно ли адаптировать стратегию\nconst isPerforming = stats.engagement_rate > avgEngagement * 1.2; // На 20% лучше среднего\nconst isUnderperforming = stats.engagement_rate < avgEngagement * 0.8; // На 20% хуже среднего\n\nlet adaptation = null;\n\nif (isPerforming) {\n  adaptation = {\n    action: 'increase_frequency',\n    pattern: post.pattern_type,\n    reason: 'Паттерн показывает высокую эффективность',\n    multiplier: 1.5\n  };\n} else if (isUnderperforming) {\n  adaptation = {\n    action: 'decrease_frequency',\n    pattern: post.pattern_type,\n    reason: 'Паттерн показывает низкую эффективность',\n    multiplier: 0.5\n  };\n}\n\nif (adaptation) {\n  // Сохраняем адаптацию в GitHub для обновления промптов\n  return {\n    json: {\n      ...stats,\n      post_info: post,\n      adaptation: adaptation,\n      should_update_prompts: true\n    }\n  };\n}\n\nreturn {\n  json: {\n    ...stats,\n    post_info: post,\n    adaptation: null,\n    should_update_prompts: false\n  }\n};"
+      },
+      "id": "code-analyze-performance",
+      "name": "Code2",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1130, 1100]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "needs-update",
+              "leftValue": "={{$json.should_update_prompts}}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-needs-update",
+      "name": "Code2",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1350, 1100]
+    },
+    {
+      "parameters": {
+        "content": "=🔄 Адаптация стратегии!\n\nПаттерн: {{$json.adaptation.pattern}}\nДействие: {{$json.adaptation.action}}\nПричина: {{$json.adaptation.reason}}\n\nСтатистика:\n👁 Просмотры: {{$json.views}}\n❤️ Лайки: {{$json.likes}}\n💬 Комментарии: {{$json.comments}}\n📊 Вовлеченность: {{$json.engagement_rate}}%\n\nПромпты будут обновлены автоматически.",
+        "chatId": "={{$env.TELEGRAM_MONITORING_CHAT_ID}}",
+        "additionalFields": {}
+      },
+      "id": "telegram-adaptation-notify",
+      "name": "Telegram2",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [1570, 1100]
+    }
+  ],
+  "connections": {
+    "Schedule Trigger2 (Deactivated)": {
+      "main": [
+        [
+          {
+            "node": "Google Sheets6",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Sheets6": {
+      "main": [
+        [
+          {
+            "node": "Sort2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sort2": {
+      "main": [
+        [
+          {
+            "node": "Limit4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Limit4": {
+      "main": [
+        [
+          {
+            "node": "Code2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code2": {
+      "main": [
+        [
+          {
+            "node": "Code2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code2": {
+      "main": [
+        [
+          {
+            "node": "Make Threads upload2",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Make Threads upload2": {
+      "main": [
+        [
+          {
+            "node": "Google Sheets2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Sheets2": {
+      "main": [
+        [
+          {
+            "node": "Telegram2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "main": [
+        [
+          {
+            "node": "OpenAI Chat Model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "main": [
+        [
+          {
+            "node": "Google Sheets1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Sheets1": {
+      "main": [
+        [
+          {
+            "node": "Google Sheets1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Sheets1": {
+      "main": [
+        [
+          {
+            "node": "Code2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code2": {
+      "main": [
+        [
+          {
+            "node": "Code2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code2": {
+      "main": [
+        [
+          {
+            "node": "Telegram2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

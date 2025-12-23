@@ -1,0 +1,344 @@
+{
+  "name": "07 - Analytics & Self-Learning System",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 6
+            }
+          ]
+        }
+      },
+      "id": "schedule-analytics",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [250, 900]
+    },
+    {
+      "parameters": {
+        "documentId": "={{$env.GOOGLE_SHEET_ID}}",
+        "sheetName": "generated_posts",
+        "operation": "read",
+        "options": {
+          "filters": {
+            "filter": [
+              {
+                "field": "published",
+                "condition": "equals",
+                "value": "true"
+              }
+            ]
+          }
+        }
+      },
+      "id": "google-sheets-published-posts",
+      "name": "Google Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [470, 900]
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "split-batches",
+      "name": "Split In Batches",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [690, 900]
+    },
+    {
+      "parameters": {
+        "url": "={{$env.THREADS_API_URL}}/{{$json.threads_post_id}}/insights",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api",
+        "options": {}
+      },
+      "id": "http-threads-insights",
+      "name": "HTTP Request",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [910, 900]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Обрабатываем статистику из Threads\nconst insights = $input.item.json;\nconst post = $('Google Sheets').first().json;\n\nconst views = insights.impressions || 0;\nconst likes = insights.likes || 0;\nconst comments = insights.comments || 0;\nconst shares = insights.shares || 0;\nconst saves = insights.saves || 0;\n\n// Вычисляем метрики\nconst engagementRate = views > 0 ? ((likes + comments * 2 + shares * 3 + saves * 2) / views * 100) : 0;\nconst viralityScore = shares > 0 ? (shares / views * 1000) : 0;\nconst retentionScore = saves > 0 ? (saves / views * 100) : 0;\n\nreturn {\n  json: {\n    post_id: post.id,\n    threads_post_id: post.threads_post_id,\n    pattern_type: post.pattern_type,\n    post_type: post.post_type,\n    published_at: post.published_at,\n    views: views,\n    likes: likes,\n    comments: comments,\n    shares: shares,\n    saves: saves,\n    engagement_rate: engagementRate,\n    virality_score: viralityScore,\n    retention_score: retentionScore,\n    collected_at: new Date().toISOString()\n  }\n};"
+      },
+      "id": "code-process-insights",
+      "name": "Code",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1130, 900]
+    },
+    {
+      "parameters": {
+        "documentId": "={{$env.GOOGLE_SHEET_ID}}",
+        "sheetName": "post_statistics",
+        "operation": "update",
+        "dataMode": "autoMapInputData",
+        "columnToMatchOn": "threads_post_id",
+        "valueOfColumnToMatchOn": "={{$json.threads_post_id}}",
+        "options": {}
+      },
+      "id": "google-sheets-update-stats",
+      "name": "Google Sheets1",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [1350, 900]
+    },
+    {
+      "parameters": {},
+      "id": "loop-back",
+      "name": "Split In Batches1",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [1570, 900]
+    },
+    {
+      "parameters": {
+        "documentId": "={{$env.GOOGLE_SHEET_ID}}",
+        "sheetName": "post_statistics",
+        "operation": "read",
+        "options": {}
+      },
+      "id": "google-sheets-all-stats",
+      "name": "Google Sheets2",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [1790, 900]
+    },
+    {
+      "parameters": {
+        "jsCode": "// САМООБУЧАЮЩИЙСЯ АЛГОРИТМ\n// Анализируем всю статистику и определяем паттерны успеха\n\nconst stats = $input.all();\n\n// 1. Группируем по типам паттернов\nconst patternStats = {};\nstats.forEach(stat => {\n  const pattern = stat.pattern_type;\n  if (!patternStats[pattern]) {\n    patternStats[pattern] = [];\n  }\n  patternStats[pattern].push(stat);\n});\n\n// 2. Вычисляем эффективность каждого паттерна\nconst patternAnalysis = {};\nfor (const [pattern, data] of Object.entries(patternStats)) {\n  const total = data.length;\n  const avgViews = data.reduce((sum, s) => sum + s.views, 0) / total;\n  const avgEngagement = data.reduce((sum, s) => sum + s.engagement_rate, 0) / total;\n  const avgVirality = data.reduce((sum, s) => sum + s.virality_score, 0) / total;\n  const avgRetention = data.reduce((sum, s) => sum + s.retention_score, 0) / total;\n  \n  // Комплексный скор успешности (взвешенная формула)\n  const successScore = (\n    avgViews * 0.25 + \n    avgEngagement * 0.35 + \n    avgVirality * 0.25 + \n    avgRetention * 0.15\n  ) / 1000; // Нормализуем\n  \n  patternAnalysis[pattern] = {\n    total: total,\n    avg_views: avgViews,\n    avg_engagement: avgEngagement,\n    avg_virality: avgVirality,\n    avg_retention: avgRetention,\n    success_score: successScore\n  };\n}\n\n// 3. Сортируем паттерны по успешности\nconst sortedPatterns = Object.entries(patternAnalysis)\n  .sort((a, b) => b[1].success_score - a[1].success_score);\n\n// 4. Определяем, какие паттерны нужно усилить, а какие ослабить\nconst adaptations = [];\nconst avgScore = sortedPatterns.reduce((sum, [_, data]) => sum + data.success_score, 0) / sortedPatterns.length;\n\nsortedPatterns.forEach(([pattern, data]) => {\n  let action = 'maintain';\n  let frequencyMultiplier = 1.0;\n  \n  if (data.success_score > avgScore * 1.3) {\n    action = 'increase_significantly';\n    frequencyMultiplier = 2.0;\n  } else if (data.success_score > avgScore * 1.1) {\n    action = 'increase';\n    frequencyMultiplier = 1.5;\n  } else if (data.success_score < avgScore * 0.7) {\n    action = 'decrease_significantly';\n    frequencyMultiplier = 0.3;\n  } else if (data.success_score < avgScore * 0.9) {\n    action = 'decrease';\n    frequencyMultiplier = 0.7;\n  }\n  \n  adaptations.push({\n    pattern: pattern,\n    action: action,\n    frequency_multiplier: frequencyMultiplier,\n    current_performance: data,\n    reason: `Success score: ${data.success_score.toFixed(2)} (avg: ${avgScore.toFixed(2)})`\n  });\n});\n\n// 5. Анализируем временные паттерны (лучшее время для постинга)\nconst hourlyPerformance = {};\nstats.forEach(stat => {\n  const hour = new Date(stat.published_at).getHours();\n  if (!hourlyPerformance[hour]) {\n    hourlyPerformance[hour] = { total: 0, engagement: 0, views: 0 };\n  }\n  hourlyPerformance[hour].total++;\n  hourlyPerformance[hour].engagement += stat.engagement_rate;\n  hourlyPerformance[hour].views += stat.views;\n});\n\nconst bestHours = Object.entries(hourlyPerformance)\n  .map(([hour, data]) => ({\n    hour: parseInt(hour),\n    avg_engagement: data.engagement / data.total,\n    avg_views: data.views / data.total\n  }))\n  .sort((a, b) => b.avg_engagement - a.avg_engagement)\n  .slice(0, 3);\n\n// 6. Анализируем длину постов\nconst lengthAnalysis = {\n  short: stats.filter(s => (s.post_text?.length || 0) < 100),\n  medium: stats.filter(s => (s.post_text?.length || 0) >= 100 && (s.post_text?.length || 0) < 200),\n  long: stats.filter(s => (s.post_text?.length || 0) >= 200)\n};\n\nconst lengthPerformance = {};\nfor (const [length, data] of Object.entries(lengthAnalysis)) {\n  if (data.length > 0) {\n    lengthPerformance[length] = {\n      count: data.length,\n      avg_engagement: data.reduce((sum, s) => sum + s.engagement_rate, 0) / data.length\n    };\n  }\n}\n\nconst bestLength = Object.entries(lengthPerformance)\n  .sort((a, b) => b[1].avg_engagement - a[1].avg_engagement)[0];\n\nreturn {\n  json: {\n    analysis_date: new Date().toISOString(),\n    total_posts_analyzed: stats.length,\n    pattern_analysis: patternAnalysis,\n    adaptations: adaptations,\n    best_posting_hours: bestHours,\n    best_post_length: bestLength ? bestLength[0] : 'medium',\n    avg_performance: {\n      views: stats.reduce((sum, s) => sum + s.views, 0) / stats.length,\n      engagement_rate: stats.reduce((sum, s) => sum + s.engagement_rate, 0) / stats.length,\n      virality_score: stats.reduce((sum, s) => sum + s.virality_score, 0) / stats.length\n    },\n    recommendations: {\n      top_patterns: sortedPatterns.slice(0, 3).map(([p, d]) => p),\n      avoid_patterns: sortedPatterns.slice(-2).map(([p, d]) => p),\n      optimal_posting_times: bestHours.map(h => `${h.hour}:00`),\n      recommended_length: bestLength ? bestLength[0] : 'medium'\n    }\n  }\n};"
+      },
+      "id": "code-ml-analysis",
+      "name": "Code1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2010, 900]
+    },
+    {
+      "parameters": {
+        "documentId": "={{$env.GOOGLE_SHEET_ID}}",
+        "sheetName": "ml_insights",
+        "columns": {
+          "mappingMode": "autoMapInputData"
+        },
+        "options": {}
+      },
+      "id": "google-sheets-save-insights",
+      "name": "Google Sheets3",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [2230, 900]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Генерируем обновленные промпты на основе анализа\nconst analysis = $input.item.json;\n\n// Создаем конфигурацию для обновления промптов\nconst promptsConfig = {\n  version: new Date().toISOString(),\n  adaptations: analysis.adaptations,\n  patterns: {},\n  meta: {\n    best_hours: analysis.best_posting_hours.map(h => h.hour),\n    best_length: analysis.best_post_length,\n    avg_performance: analysis.avg_performance\n  }\n};\n\n// Для каждого паттерна создаем инструкции\nanalysis.adaptations.forEach(adaptation => {\n  promptsConfig.patterns[adaptation.pattern] = {\n    frequency_multiplier: adaptation.frequency_multiplier,\n    action: adaptation.action,\n    performance: adaptation.current_performance,\n    enabled: adaptation.frequency_multiplier > 0.5,\n    priority: adaptation.frequency_multiplier > 1.5 ? 'high' : adaptation.frequency_multiplier > 1.0 ? 'medium' : 'low'\n  };\n});\n\nreturn {\n  json: {\n    config: promptsConfig,\n    filename: `prompts-config-${new Date().toISOString().split('T')[0]}.json`,\n    content: JSON.stringify(promptsConfig, null, 2)\n  }\n};"
+      },
+      "id": "code-generate-config",
+      "name": "Code2",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2450, 900]
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "owner": "={{$env.GITHUB_OWNER}}",
+        "repository": "={{$env.GITHUB_REPO}}",
+        "filePath": "=config/{{$json.filename}}",
+        "fileContent": "={{$json.content}}",
+        "commitMessage": "=🤖 Auto-update prompts config based on ML analysis",
+        "additionalParameters": {}
+      },
+      "id": "github-update-config",
+      "name": "GitHub",
+      "type": "n8n-nodes-base.github",
+      "typeVersion": 1,
+      "position": [2670, 900]
+    },
+    {
+      "parameters": {
+        "content": "=🧠 САМООБУЧЕНИЕ ЗАВЕРШЕНО!\n\n📊 Проанализировано постов: {{$json.analysis.total_posts_analyzed}}\n\n🏆 ТОП-3 паттерна:\n{{$json.analysis.recommendations.top_patterns.join('\\n')}}\n\n⏰ Лучшее время для постинга:\n{{$json.analysis.recommendations.optimal_posting_times.join(', ')}}\n\n📏 Рекомендуемая длина: {{$json.analysis.recommendations.recommended_length}}\n\n📈 Средняя эффективность:\n• Просмотры: {{$json.analysis.avg_performance.views.toFixed(0)}}\n• Вовлеченность: {{$json.analysis.avg_performance.engagement_rate.toFixed(2)}}%\n• Виральность: {{$json.analysis.avg_performance.virality_score.toFixed(2)}}\n\n✅ Конфигурация промптов обновлена автоматически в GitHub\n\nСистема адаптирована под ваши лучшие результаты!",
+        "chatId": "={{$env.TELEGRAM_MONITORING_CHAT_ID}}",
+        "additionalFields": {}
+      },
+      "id": "telegram-ml-report",
+      "name": "Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [2890, 900]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "owner": "={{$env.GITHUB_OWNER}}",
+        "repository": "={{$env.GITHUB_REPO}}",
+        "filePath": "config/active-config.json",
+        "fileContent": "={{$json.content}}",
+        "commitMessage": "🎯 Activate new ML-optimized config",
+        "additionalParameters": {}
+      },
+      "id": "github-activate-config",
+      "name": "GitHub1",
+      "type": "n8n-nodes-base.github",
+      "typeVersion": 1,
+      "position": [2670, 700]
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Google Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Sheets": {
+      "main": [
+        [
+          {
+            "node": "Split In Batches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split In Batches": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "Google Sheets1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Sheets1": {
+      "main": [
+        [
+          {
+            "node": "Split In Batches1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split In Batches1": {
+      "main": [
+        [
+          {
+            "node": "Google Sheets2",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Split In Batches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Sheets2": {
+      "main": [
+        [
+          {
+            "node": "Code1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code1": {
+      "main": [
+        [
+          {
+            "node": "Google Sheets3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Sheets3": {
+      "main": [
+        [
+          {
+            "node": "Code2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code2": {
+      "main": [
+        [
+          {
+            "node": "GitHub",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "GitHub1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GitHub": {
+      "main": [
+        [
+          {
+            "node": "Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

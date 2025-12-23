@@ -1,0 +1,360 @@
+{
+  "name": "03 - Посты короткие (Short Posts Generation)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 4
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger-short",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [250, 500]
+    },
+    {
+      "parameters": {
+        "documentId": "={{$env.GOOGLE_SHEET_ID}}",
+        "sheetName": "filtered_news",
+        "operation": "read",
+        "options": {
+          "filters": {
+            "filter": [
+              {
+                "field": "should_publish",
+                "condition": "equals",
+                "value": "true"
+              },
+              {
+                "field": "published",
+                "condition": "notEquals",
+                "value": "true"
+              },
+              {
+                "field": "post_type",
+                "condition": "equals",
+                "value": "short"
+              }
+            ]
+          }
+        }
+      },
+      "id": "google-sheets-read-news",
+      "name": "Get row(s) in sheet2",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [470, 500]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "has-items",
+              "leftValue": "={{$json.length}}",
+              "rightValue": "0",
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "filter-has-items",
+      "name": "Filter1",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2,
+      "position": [690, 500]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Получаем промпты из GitHub\nconst promptsUrl = $env.GITHUB_PROMPTS_URL || 'https://raw.githubusercontent.com/yourusername/ai-content-prompts/main/short-posts.json';\n\nconst response = await $http.request({\n  url: promptsUrl,\n  method: 'GET'\n});\n\nconst prompts = response.data;\n\n// Получаем статистику из Google Sheets для адаптации\nconst statsSheet = await $('Google Sheets').getNodeParameter('documentId');\nconst stats = await $('Google Sheets').getAll({\n  sheetName: 'post_statistics',\n  options: {\n    filters: [\n      { field: 'post_type', condition: 'equals', value: 'short' }\n    ]\n  }\n});\n\n// Анализируем, какие паттерны работают лучше\nconst patterns = {};\nstats.forEach(stat => {\n  const pattern = stat.pattern_type;\n  if (!patterns[pattern]) {\n    patterns[pattern] = { total: 0, engagement: 0, views: 0 };\n  }\n  patterns[pattern].total++;\n  patterns[pattern].engagement += stat.engagement_rate;\n  patterns[pattern].views += stat.views;\n});\n\n// Выбираем лучший паттерн\nlet bestPattern = null;\nlet bestScore = 0;\n\nfor (const [pattern, data] of Object.entries(patterns)) {\n  const avgEngagement = data.engagement / data.total;\n  const avgViews = data.views / data.total;\n  const score = avgEngagement * 0.6 + (avgViews / 1000) * 0.4; // Взвешенная оценка\n  \n  if (score > bestScore) {\n    bestScore = score;\n    bestPattern = pattern;\n  }\n}\n\n// Используем лучший паттерн или случайный, если статистики нет\nconst selectedPrompt = bestPattern && prompts[bestPattern] \n  ? prompts[bestPattern] \n  : prompts[Object.keys(prompts)[Math.floor(Math.random() * Object.keys(prompts).length)]];\n\nreturn {\n  json: {\n    prompt: selectedPrompt,\n    pattern_type: bestPattern || 'random',\n    news_items: $input.all()\n  }\n};"
+      },
+      "id": "code-get-prompts",
+      "name": "Code5",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [910, 500]
+    },
+    {
+      "parameters": {
+        "documentId": "={{$env.GOOGLE_SHEET_ID}}",
+        "sheetName": "github_prompts",
+        "operation": "read",
+        "options": {}
+      },
+      "id": "google-sheets-prompts",
+      "name": "Get row(s) in sheet4",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [910, 700]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{$json.prompt}}\n\nИсточник:\nЗаголовок: {{$json.news_items[0].title}}\nКлючевые пункты: {{$json.news_items[0].key_points}}\nУгол подачи: {{$json.news_items[0].suggested_angle}}\n\nСгенерируй пост в формате JSON:\n{\n  \"text\": \"текст поста с эмодзи\",\n  \"hashtags\": [\"#ai\", \"#tech\"],\n  \"call_to_action\": \"призыв к действию\"\n}",
+        "options": {
+          "systemMessage": "Ты expert-копирайтер для соцсетей. Твои посты вирусные, провокационные и генерируют высокую вовлечённость. Используй данные о том, какие паттерны работают лучше."
+        }
+      },
+      "id": "anthropic-generate",
+      "name": "Code3",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1,
+      "position": [1130, 500]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Парсим ответ от LLM\nconst response = JSON.parse($input.item.json.response);\n\nreturn {\n  json: {\n    post_text: response.text,\n    hashtags: response.hashtags.join(' '),\n    call_to_action: response.call_to_action,\n    news_id: $input.item.json.news_items[0].id,\n    pattern_type: $input.item.json.pattern_type,\n    created_at: new Date().toISOString()\n  }\n};"
+      },
+      "id": "code-parse-response",
+      "name": "Code",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1350, 500]
+    },
+    {
+      "parameters": {
+        "documentId": "={{$env.GOOGLE_SHEET_ID}}",
+        "sheetName": "generated_posts",
+        "columns": {
+          "mappingMode": "autoMapInputData"
+        },
+        "options": {}
+      },
+      "id": "google-sheets-save-post",
+      "name": "Get row(s) in sheet3",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [1570, 500]
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": "={{$env.GITHUB_REPO_FILE_ID}}",
+        "options": {}
+      },
+      "id": "github-get-file",
+      "name": "Extract from File",
+      "type": "n8n-nodes-base.github",
+      "typeVersion": 1,
+      "position": [250, 700]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Читаем файл с промптами из GitHub\nconst fileContent = $input.item.binary.data;\nconst prompts = JSON.parse(Buffer.from(fileContent, 'base64').toString());\n\nreturn {\n  json: {\n    prompts: prompts\n  }\n};"
+      },
+      "id": "code-parse-prompts",
+      "name": "Get row(s) in sheet5",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [470, 700]
+    },
+    {
+      "parameters": {
+        "documentId": "={{$env.GOOGLE_SHEET_ID}}",
+        "sheetName": "github_prompts",
+        "columns": {
+          "mappingMode": "autoMapInputData"
+        },
+        "options": {}
+      },
+      "id": "google-sheets-save-prompts",
+      "name": "Limit3",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [690, 700]
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "options": {}
+      },
+      "id": "aggregate-results",
+      "name": "Aggregate1",
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [1790, 500]
+    },
+    {
+      "parameters": {
+        "operation": "runAgent",
+        "agent": "content_optimizer",
+        "options": {}
+      },
+      "id": "ai-agent-optimizer",
+      "name": "AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1,
+      "position": [1350, 300]
+    },
+    {
+      "parameters": {
+        "memoryType": "simple",
+        "options": {}
+      },
+      "id": "memory-context",
+      "name": "Simple Memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1,
+      "position": [1350, 100]
+    },
+    {
+      "parameters": {
+        "operation": "embedText",
+        "text": "={{$json.post_text}}",
+        "options": {}
+      },
+      "id": "anthropic-embedding",
+      "name": "Anthropic Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1,
+      "position": [1570, 300]
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get row(s) in sheet2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet2": {
+      "main": [
+        [
+          {
+            "node": "Filter1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter1": {
+      "main": [
+        [
+          {
+            "node": "Code5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code5": {
+      "main": [
+        [
+          {
+            "node": "Code3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code3": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "Get row(s) in sheet3",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet3": {
+      "main": [
+        [
+          {
+            "node": "Aggregate1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File": {
+      "main": [
+        [
+          {
+            "node": "Get row(s) in sheet5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet5": {
+      "main": [
+        [
+          {
+            "node": "Limit3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Limit3": {
+      "main": [
+        [
+          {
+            "node": "Get row(s) in sheet4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Anthropic Chat Model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

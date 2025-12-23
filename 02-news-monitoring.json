@@ -1,0 +1,334 @@
+{
+  "name": "02 - Новости (News Monitoring & Filtering)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 6
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger-news",
+      "name": "Schedule Trigger3",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [250, 400]
+    },
+    {
+      "parameters": {
+        "documentId": "={{$env.GOOGLE_SHEET_ID}}",
+        "sheetName": "news_sources",
+        "operation": "read",
+        "options": {}
+      },
+      "id": "google-sheets-sources",
+      "name": "AI news",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [470, 400]
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "split-in-batches",
+      "name": "Sort1",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [690, 400]
+    },
+    {
+      "parameters": {
+        "url": "={{$node['AI news'].json['rss_url']}}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "id": "http-request-rss",
+      "name": "Limit1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [910, 400]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "xml_parse",
+              "name": "items",
+              "value": "={{$xml($input.item.json.body).rss.channel.item}}",
+              "type": "array"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "code-parse-rss",
+      "name": "Sort3",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [1130, 400]
+    },
+    {
+      "parameters": {},
+      "id": "item-lists-split",
+      "name": "Limit",
+      "type": "n8n-nodes-base.itemLists",
+      "typeVersion": 3,
+      "position": [1350, 400]
+    },
+    {
+      "parameters": {
+        "url": "={{$json.items[0].link}}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "id": "http-request-article",
+      "name": "Limit8",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1570, 400]
+    },
+    {
+      "parameters": {
+        "operation": "extractHtmlContent",
+        "options": {}
+      },
+      "id": "html-extract",
+      "name": "Aggregate1",
+      "type": "n8n-nodes-base.html",
+      "typeVersion": 1,
+      "position": [1790, 300]
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "options": {}
+      },
+      "id": "aggregate-items",
+      "name": "AI Agent1",
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [1790, 500]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Проанализируй эту статью и определи, стоит ли публиковать пост на её основе.\n\nКритерии:\n- Актуальность для аудитории (ИИ, новые инструменты, технологии)\n- Новизна информации\n- Потенциал вовлечения\n- Практическая ценность\n\nСтатья:\n{{$json.htmlContent}}\n\nОтветь в формате JSON:\n{\n  \"should_publish\": true/false,\n  \"reason\": \"краткая причина\",\n  \"key_points\": [\"ключевая инфо 1\", \"ключевая инфо 2\"],\n  \"engagement_potential\": \"high/medium/low\",\n  \"suggested_angle\": \"как лучше подать материал\"\n}",
+        "options": {
+          "systemMessage": "Ты эксперт по контент-стратегии и анализу трендов в области ИИ и технологий."
+        }
+      },
+      "id": "openai-filter",
+      "name": "Anthropic Chat Model1",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1,
+      "position": [2010, 400]
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "options": {}
+      },
+      "id": "aggregate-final",
+      "name": "Simple Memory",
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [2230, 400]
+    },
+    {
+      "parameters": {
+        "documentId": "={{$env.GOOGLE_SHEET_ID}}",
+        "sheetName": "filtered_news",
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "title": "={{$json.items[0].title}}",
+            "link": "={{$json.items[0].link}}",
+            "source": "={{$json.source}}",
+            "should_publish": "={{$json.analysis.should_publish}}",
+            "engagement_potential": "={{$json.analysis.engagement_potential}}",
+            "key_points": "={{JSON.stringify($json.analysis.key_points)}}",
+            "suggested_angle": "={{$json.analysis.suggested_angle}}",
+            "created_at": "={{$now.toISO()}}"
+          }
+        },
+        "options": {}
+      },
+      "id": "google-sheets-save",
+      "name": "Google Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [2450, 400]
+    },
+    {
+      "parameters": {
+        "content": "={{$json.analysis.should_publish ? '✅ Новая статья отфильтрована для публикации:\\n' + $json.items[0].title : '❌ Статья отклонена'}}",
+        "chatId": "={{$env.TELEGRAM_MONITORING_CHAT_ID}}",
+        "additionalFields": {}
+      },
+      "id": "telegram-notify",
+      "name": "Telegram3",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [2670, 400]
+    }
+  ],
+  "connections": {
+    "Schedule Trigger3": {
+      "main": [
+        [
+          {
+            "node": "AI news",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI news": {
+      "main": [
+        [
+          {
+            "node": "Sort1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sort1": {
+      "main": [
+        [
+          {
+            "node": "Limit1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Limit1": {
+      "main": [
+        [
+          {
+            "node": "Sort3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sort3": {
+      "main": [
+        [
+          {
+            "node": "Limit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Limit": {
+      "main": [
+        [
+          {
+            "node": "Limit8",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Limit8": {
+      "main": [
+        [
+          {
+            "node": "Aggregate1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "AI Agent1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate1": {
+      "main": [
+        [
+          {
+            "node": "Anthropic Chat Model1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent1": {
+      "main": [
+        [
+          {
+            "node": "Anthropic Chat Model1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Anthropic Chat Model1": {
+      "main": [
+        [
+          {
+            "node": "Simple Memory",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "main": [
+        [
+          {
+            "node": "Google Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Sheets": {
+      "main": [
+        [
+          {
+            "node": "Telegram3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

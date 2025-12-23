@@ -1,0 +1,336 @@
+{
+  "name": "04 - Карусели (Carousel Posts Generation)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "days",
+              "daysInterval": 1
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger-carousel",
+      "name": "Schedule Trigger1 (Deactivated)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [250, 600]
+    },
+    {
+      "parameters": {
+        "documentId": "={{$env.GOOGLE_SHEET_ID}}",
+        "sheetName": "filtered_news",
+        "operation": "read",
+        "options": {
+          "filters": {
+            "filter": [
+              {
+                "field": "should_publish",
+                "condition": "equals",
+                "value": "true"
+              },
+              {
+                "field": "engagement_potential",
+                "condition": "equals",
+                "value": "high"
+              },
+              {
+                "field": "post_type",
+                "condition": "equals",
+                "value": "carousel"
+              }
+            ]
+          }
+        }
+      },
+      "id": "google-sheets-carousel",
+      "name": "Google Sheets5",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [470, 600]
+    },
+    {
+      "parameters": {
+        "operation": "sort",
+        "sortFieldsUi": {
+          "sortField": [
+            {
+              "fieldName": "engagement_potential",
+              "order": "descending"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "sort-by-engagement",
+      "name": "Sort",
+      "type": "n8n-nodes-base.sort",
+      "typeVersion": 1,
+      "position": [690, 600]
+    },
+    {
+      "parameters": {
+        "operation": "limit",
+        "maxItems": 1,
+        "options": {}
+      },
+      "id": "limit-one",
+      "name": "Limit2",
+      "type": "n8n-nodes-base.limit",
+      "typeVersion": 1,
+      "position": [910, 600]
+    },
+    {
+      "parameters": {
+        "operation": "text",
+        "options": {
+          "model": "claude-3-5-sonnet-20241022"
+        }
+      },
+      "id": "basic-llm-chain-1",
+      "name": "Basic LLM Chain2",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.4,
+      "position": [1130, 600]
+    },
+    {
+      "parameters": {
+        "operation": "text",
+        "promptType": "define",
+        "text": "=Создай карусельный пост (10 слайдов) на основе этой статьи.\n\nСтатья:\nЗаголовок: {{$json.title}}\nКлючевые пункты: {{$json.key_points}}\nУгол подачи: {{$json.suggested_angle}}\nСсылка: {{$json.link}}\n\nТребования:\n1. Первый слайд - цепляющий заголовок с крючком\n2. Слайды 2-9 - пошаговое раскрытие темы\n3. Последний слайд - сильный CTA\n4. Каждый слайд максимум 50 символов\n5. Используй эмодзи и форматирование\n6. Провокационный и практичный стиль\n\nФормат ответа JSON:\n{\n  \"slides\": [\n    {\"number\": 1, \"text\": \"текст слайда\", \"design_notes\": \"что показать визуально\"},\n    ...\n  ],\n  \"caption\": \"подпись к посту с хештегами\",\n  \"first_comment\": \"текст для первого комментария с дополнительной инфо\"\n}",
+        "options": {
+          "systemMessage": "Ты эксперт по созданию вирусных карусельных постов. Твои карусели получают миллионы просмотров благодаря цепляющим заголовкам и структуре, которая заставляет листать до конца."
+        }
+      },
+      "id": "basic-llm-chain-2",
+      "name": "Basic LLM Chain3",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1,
+      "position": [1350, 600]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Парсим ответ от LLM\nconst response = JSON.parse($input.item.json.response);\n\n// Генерируем изображения для каждого слайда через DALL-E или Midjourney API\nconst slides = [];\n\nfor (const slide of response.slides) {\n  // Здесь можно добавить генерацию изображений\n  slides.push({\n    number: slide.number,\n    text: slide.text,\n    design_notes: slide.design_notes,\n    image_url: null // Placeholder для будущей генерации\n  });\n}\n\nreturn {\n  json: {\n    post_type: 'carousel',\n    slides: slides,\n    caption: response.caption,\n    first_comment: response.first_comment,\n    news_id: $input.item.json.id,\n    created_at: new Date().toISOString(),\n    status: 'ready_for_review'\n  }\n};"
+      },
+      "id": "code-process-carousel",
+      "name": "Basic LLM Chain1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1570, 600]
+    },
+    {
+      "parameters": {
+        "documentId": "={{$env.GOOGLE_SHEET_ID}}",
+        "sheetName": "carousel_posts",
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "post_type": "={{$json.post_type}}",
+            "slides": "={{JSON.stringify($json.slides)}}",
+            "caption": "={{$json.caption}}",
+            "first_comment": "={{$json.first_comment}}",
+            "news_id": "={{$json.news_id}}",
+            "created_at": "={{$json.created_at}}",
+            "status": "={{$json.status}}"
+          }
+        },
+        "options": {}
+      },
+      "id": "google-sheets-save-carousel",
+      "name": "Google Sheets1",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [1790, 600]
+    },
+    {
+      "parameters": {
+        "operation": "editField",
+        "fieldName": "slides_json",
+        "fieldValue": "={{JSON.stringify($json.slides)}}",
+        "options": {}
+      },
+      "id": "edit-fields-1",
+      "name": "Edit Fields3",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [1130, 800]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "review-approved",
+              "leftValue": "={{$json.status}}",
+              "rightValue": "approved",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-approved",
+      "name": "IF3",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [2010, 600]
+    },
+    {
+      "parameters": {
+        "content": "=🎨 Новая карусель готова!\n\nТема: {{$json.slides[0].text}}\n\nВсего слайдов: {{$json.slides.length}}\n\nПодпись: {{$json.caption}}\n\n👉 Проверь и одобри для публикации",
+        "chatId": "={{$env.TELEGRAM_REVIEW_CHAT_ID}}",
+        "additionalFields": {
+          "replyMarkup": "inlineKeyboard",
+          "inlineKeyboard": "{\n  \"inline_keyboard\": [\n    [{\"text\": \"✅ Одобрить\", \"callback_data\": \"approve_{{$json.id}}\"}],\n    [{\"text\": \"✏️ Редактировать\", \"callback_data\": \"edit_{{$json.id}}\"}],\n    [{\"text\": \"❌ Отклонить\", \"callback_data\": \"reject_{{$json.id}}\"}]\n  ]\n}"
+        }
+      },
+      "id": "telegram-review",
+      "name": "Telegram5",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [2010, 800]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-sonnet-20241022"
+      },
+      "id": "anthropic-chat-model",
+      "name": "Anthropic Chat Model1",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1,
+      "position": [690, 400]
+    },
+    {
+      "parameters": {
+        "operation": "embedText",
+        "text": "={{$json.caption}}",
+        "options": {}
+      },
+      "id": "anthropic-embedding-carousel",
+      "name": "IF3",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1,
+      "position": [2230, 600]
+    }
+  ],
+  "connections": {
+    "Schedule Trigger1 (Deactivated)": {
+      "main": [
+        [
+          {
+            "node": "Google Sheets5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Sheets5": {
+      "main": [
+        [
+          {
+            "node": "Sort",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sort": {
+      "main": [
+        [
+          {
+            "node": "Limit2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Limit2": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain2": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain3": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain1": {
+      "main": [
+        [
+          {
+            "node": "Google Sheets1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Sheets1": {
+      "main": [
+        [
+          {
+            "node": "IF3",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Telegram5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF3": {
+      "main": [
+        [
+          {
+            "node": "IF3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

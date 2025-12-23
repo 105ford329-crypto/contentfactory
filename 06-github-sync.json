@@ -1,0 +1,363 @@
+{
+  "name": "06 - GitHub Sync (Prompts Auto-Update)",
+  "nodes": [
+    {
+      "parameters": {
+        "triggerOn": "specificEvent",
+        "events": ["push"],
+        "options": {}
+      },
+      "id": "github-webhook",
+      "name": "GitHub Trigger",
+      "type": "n8n-nodes-base.githubTrigger",
+      "typeVersion": 1,
+      "webhookId": "github-prompts-update",
+      "position": [250, 800]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "prompts-changed",
+              "leftValue": "={{$json.commits[0].modified.join(',')}}",
+              "rightValue": "prompts/",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "id": "if-prompts-changed",
+      "name": "IF",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [470, 800]
+    },
+    {
+      "parameters": {
+        "owner": "={{$env.GITHUB_OWNER}}",
+        "repository": "={{$env.GITHUB_REPO}}",
+        "filePath": "prompts/short-posts.json",
+        "options": {}
+      },
+      "id": "github-get-short-posts",
+      "name": "GitHub",
+      "type": "n8n-nodes-base.github",
+      "typeVersion": 1,
+      "position": [690, 700]
+    },
+    {
+      "parameters": {
+        "owner": "={{$env.GITHUB_OWNER}}",
+        "repository": "={{$env.GITHUB_REPO}}",
+        "filePath": "prompts/carousel-posts.json",
+        "options": {}
+      },
+      "id": "github-get-carousel-posts",
+      "name": "GitHub1",
+      "type": "n8n-nodes-base.github",
+      "typeVersion": 1,
+      "position": [690, 900]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Парсим файлы с промптами\nconst shortPostsContent = Buffer.from($input.first().json.content, 'base64').toString();\nconst carouselPostsContent = Buffer.from($input.last().json.content, 'base64').toString();\n\nconst shortPostsPrompts = JSON.parse(shortPostsContent);\nconst carouselPostsPrompts = JSON.parse(carouselPostsContent);\n\nreturn {\n  json: {\n    short_posts: shortPostsPrompts,\n    carousel_posts: carouselPostsPrompts,\n    updated_at: new Date().toISOString()\n  }\n};"
+      },
+      "id": "code-parse-prompts-files",
+      "name": "Code1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [910, 800]
+    },
+    {
+      "parameters": {
+        "documentId": "={{$env.GOOGLE_SHEET_ID}}",
+        "sheetName": "github_prompts",
+        "operation": "clear",
+        "options": {}
+      },
+      "id": "google-sheets-clear",
+      "name": "Google Sheets1",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [1130, 800]
+    },
+    {
+      "parameters": {
+        "documentId": "={{$env.GOOGLE_SHEET_ID}}",
+        "sheetName": "github_prompts",
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "type": "short_posts",
+            "prompts": "={{JSON.stringify($json.short_posts)}}",
+            "updated_at": "={{$json.updated_at}}"
+          }
+        },
+        "options": {}
+      },
+      "id": "google-sheets-save-short",
+      "name": "Google Sheets2",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [1350, 700]
+    },
+    {
+      "parameters": {
+        "documentId": "={{$env.GOOGLE_SHEET_ID}}",
+        "sheetName": "github_prompts",
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "type": "carousel_posts",
+            "prompts": "={{JSON.stringify($json.carousel_posts)}}",
+            "updated_at": "={{$json.updated_at}}"
+          }
+        },
+        "options": {}
+      },
+      "id": "google-sheets-save-carousel",
+      "name": "Google Sheets1",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [1350, 900]
+    },
+    {
+      "parameters": {
+        "content": "=🔄 Промпты обновлены из GitHub!\n\nКоммит: {{$json.commits[0].message}}\nАвтор: {{$json.commits[0].author.name}}\nВремя: {{$json.commits[0].timestamp}}\n\nОбновленные файлы:\n{{$json.commits[0].modified.join('\\n')}}\n\nСистема автоматически начнет использовать новые промпты.",
+        "chatId": "={{$env.TELEGRAM_MONITORING_CHAT_ID}}",
+        "additionalFields": {}
+      },
+      "id": "telegram-notify-update",
+      "name": "Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [1570, 800]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 24
+            }
+          ]
+        }
+      },
+      "id": "schedule-backup",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [250, 1300]
+    },
+    {
+      "parameters": {
+        "documentId": "={{$env.GOOGLE_SHEET_ID}}",
+        "sheetName": "post_statistics",
+        "operation": "read",
+        "options": {}
+      },
+      "id": "google-sheets-get-stats",
+      "name": "Google Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [470, 1300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Создаем бэкап статистики и отправляем в GitHub\nconst stats = $input.all();\n\nconst backup = {\n  created_at: new Date().toISOString(),\n  total_posts: stats.length,\n  total_views: stats.reduce((sum, s) => sum + (s.views || 0), 0),\n  total_engagement: stats.reduce((sum, s) => sum + (s.likes || 0) + (s.comments || 0), 0),\n  avg_engagement_rate: stats.reduce((sum, s) => sum + (s.engagement_rate || 0), 0) / stats.length,\n  statistics: stats\n};\n\nreturn {\n  json: {\n    backup: backup,\n    filename: `backup-${new Date().toISOString().split('T')[0]}.json`,\n    content: JSON.stringify(backup, null, 2)\n  }\n};"
+      },
+      "id": "code-create-backup",
+      "name": "Code",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [690, 1300]
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "owner": "={{$env.GITHUB_OWNER}}",
+        "repository": "={{$env.GITHUB_REPO}}",
+        "filePath": "=backups/{{$json.filename}}",
+        "fileContent": "={{$json.content}}",
+        "commitMessage": "=Automatic backup {{$json.filename}}",
+        "additionalParameters": {}
+      },
+      "id": "github-create-backup",
+      "name": "GitHub2",
+      "type": "n8n-nodes-base.github",
+      "typeVersion": 1,
+      "position": [910, 1300]
+    },
+    {
+      "parameters": {
+        "content": "=💾 Бэкап статистики создан!\n\nФайл: {{$json.filename}}\nВсего постов: {{$json.backup.total_posts}}\nВсего просмотров: {{$json.backup.total_views}}\nСредняя вовлеченность: {{$json.backup.avg_engagement_rate.toFixed(2)}}%",
+        "chatId": "={{$env.TELEGRAM_MONITORING_CHAT_ID}}",
+        "additionalFields": {}
+      },
+      "id": "telegram-backup-notify",
+      "name": "Telegram1",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [1130, 1300]
+    }
+  ],
+  "connections": {
+    "GitHub Trigger": {
+      "main": [
+        [
+          {
+            "node": "IF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF": {
+      "main": [
+        [
+          {
+            "node": "GitHub",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "GitHub1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GitHub": {
+      "main": [
+        [
+          {
+            "node": "Code1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GitHub1": {
+      "main": [
+        [
+          {
+            "node": "Code1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code1": {
+      "main": [
+        [
+          {
+            "node": "Google Sheets1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Sheets1": {
+      "main": [
+        [
+          {
+            "node": "Google Sheets2",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Google Sheets1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Sheets2": {
+      "main": [
+        [
+          {
+            "node": "Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Sheets1": {
+      "main": [
+        [
+          {
+            "node": "Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Google Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Sheets": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "GitHub2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GitHub2": {
+      "main": [
+        [
+          {
+            "node": "Telegram1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
