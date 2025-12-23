@@ -1,0 +1,870 @@
+{
+  "name": "TikTok AI Lifehacks - Генерация контента",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 24,
+              "triggerAtHour": 10
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Schedule Trigger3",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 500]
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "YOUR_GOOGLE_SHEET_ID"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "Topics"
+        }
+      },
+      "id": "sheets-read",
+      "name": "Get row(s) in sheet2",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [460, 500],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "GOOGLE_SHEETS_CREDENTIALS_ID",
+          "name": "Google Sheets"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sortFieldsUi": {
+          "sortField": [
+            {
+              "fieldName": "created_at",
+              "order": "ascending"
+            }
+          ]
+        }
+      },
+      "id": "sort-1",
+      "name": "Sort",
+      "type": "n8n-nodes-base.sort",
+      "typeVersion": 1,
+      "position": [680, 500]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition-pending",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "pending",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "filter-pending",
+      "name": "Filter",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2,
+      "position": [900, 500]
+    },
+    {
+      "parameters": {
+        "maxItems": 10
+      },
+      "id": "limit-2",
+      "name": "Limit2",
+      "type": "n8n-nodes-base.limit",
+      "typeVersion": 1,
+      "position": [1120, 500]
+    },
+    {
+      "parameters": {
+        "sortFieldsUi": {
+          "sortField": [
+            {
+              "fieldName": "created_at",
+              "order": "descending"
+            }
+          ]
+        }
+      },
+      "id": "sort-0",
+      "name": "Sort0",
+      "type": "n8n-nodes-base.sort",
+      "typeVersion": 1,
+      "position": [1340, 500]
+    },
+    {
+      "parameters": {
+        "maxItems": 5
+      },
+      "id": "limit-5",
+      "name": "Limit5",
+      "type": "n8n-nodes-base.limit",
+      "typeVersion": 1,
+      "position": [1560, 500]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Подготовка данных для верхней ветки\nconst items = $input.all();\n\nreturn items.map(item => {\n  const data = item.json;\n  return {\n    json: {\n      id: data.id,\n      hook: data.hook,\n      body: data.body,\n      cta: data.cta,\n      topic_summary: `${data.hook} ${data.body?.substring(0, 150)}`,\n      row_number: data.row_number\n    }\n  };\n});"
+      },
+      "id": "code-5",
+      "name": "Code5",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1780, 500]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://openrouter.ai/api/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"google/gemini-2.0-flash-001\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"Ты — эксперт по AI. Отвечай кратко и структурированно.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"Тема: {{ $json.topic_summary }}\\n\\nПридумай 3 AI-лайфхака по этой теме.\\nДля каждого: название инструмента, что делает, пример.\\nJSON: [{\\\"tool\\\": \\\"\\\", \\\"what\\\": \\\"\\\", \\\"example\\\": \\\"\\\"}]\"\n    }\n  ]\n}"
+      },
+      "id": "openrouter-auto",
+      "name": "Автоответ",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2000, 500],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "OPENROUTER_CREDENTIALS_ID",
+          "name": "OpenRouter API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Парсим AI инструменты\nconst items = $input.all();\n\nreturn items.map(item => {\n  const data = item.json;\n  let aiTools = [];\n  \n  try {\n    const content = data.choices[0].message.content;\n    const match = content.match(/\\[.*\\]/s);\n    if (match) aiTools = JSON.parse(match[0]);\n  } catch (e) {}\n  \n  return {\n    json: {\n      id: $('Code5').item.json.id,\n      hook: $('Code5').item.json.hook,\n      body: $('Code5').item.json.body,\n      ai_tools: aiTools\n    }\n  };\n});"
+      },
+      "id": "code-0",
+      "name": "Code0",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2220, 500]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://openrouter.ai/api/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"anthropic/claude-3.5-sonnet\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"Ты — копирайтер для Reels про AI. Пишешь цепляющие тексты.\\n\\nФормат JSON:\\n{\\\"hook\\\": \\\"\\\", \\\"body\\\": \\\"\\\", \\\"cta\\\": \\\"\\\", \\\"description\\\": \\\"\\\", \\\"hashtags\\\": []}\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"Исходная тема: {{ $json.hook }}\\n\\nAI инструменты: {{ JSON.stringify($json.ai_tools) }}\\n\\nНапиши рилс про AI лайфхак с:\\n1. WOW-хуком\\n2. Пошаговой инструкцией\\n3. Сильным CTA\"\n    }\n  ]\n}"
+      },
+      "id": "llm-chain",
+      "name": "Basic LLM Chain",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2440, 500],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "OPENROUTER_CREDENTIALS_ID",
+          "name": "OpenRouter API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Парсим финальный скрипт\nconst items = $input.all();\n\nreturn items.map(item => {\n  const data = item.json;\n  let script = {};\n  \n  try {\n    const content = data.choices[0].message.content;\n    const match = content.match(/\\{[\\s\\S]*\\}/);\n    if (match) script = JSON.parse(match[0]);\n  } catch (e) {\n    script = { error: 'parse failed' };\n  }\n  \n  return {\n    json: {\n      id: $('Code0').item.json.id,\n      ...script,\n      full_script: `${script.hook || ''} ${script.body || ''} ${script.cta || ''}`\n    }\n  };\n});"
+      },
+      "id": "code-4",
+      "name": "Code4",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2660, 500]
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "duplicateItem": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "id",
+              "name": "id",
+              "value": "={{ $json.id }}",
+              "type": "string"
+            },
+            {
+              "id": "hook",
+              "name": "hook",
+              "value": "={{ $json.hook }}",
+              "type": "string"
+            },
+            {
+              "id": "body",
+              "name": "body",
+              "value": "={{ $json.body }}",
+              "type": "string"
+            },
+            {
+              "id": "cta",
+              "name": "cta",
+              "value": "={{ $json.cta }}",
+              "type": "string"
+            },
+            {
+              "id": "description",
+              "name": "description",
+              "value": "={{ $json.description }}",
+              "type": "string"
+            },
+            {
+              "id": "hashtags",
+              "name": "hashtags",
+              "value": "={{ Array.isArray($json.hashtags) ? $json.hashtags.join(' ') : $json.hashtags }}",
+              "type": "string"
+            },
+            {
+              "id": "full_script",
+              "name": "full_script",
+              "value": "={{ $json.full_script }}",
+              "type": "string"
+            },
+            {
+              "id": "source",
+              "name": "source",
+              "value": "upper_branch",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "id": "edit-fields-upper",
+      "name": "Edit Fields",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [2880, 500]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.apify.com/v2/acts/clockworks~tiktok-scraper/runs?token={{$credentials.apifyApiToken}}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"profiles\": [\n    \"AI_COMPETITOR_1\",\n    \"AI_COMPETITOR_2\"\n  ],\n  \"resultsPerPage\": 30,\n  \"shouldDownloadVideos\": false\n}"
+      },
+      "id": "headline-patterns",
+      "name": "Headline patterns",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 800],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "APIFY_CREDENTIALS_ID",
+          "name": "Apify API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": 30,
+        "unit": "seconds"
+      },
+      "id": "wait-apify",
+      "name": "Wait",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [900, 800]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://api.apify.com/v2/acts/clockworks~tiktok-scraper/runs/last/dataset/items?token={{$credentials.apifyApiToken}}"
+      },
+      "id": "get-apify-results",
+      "name": "Get Apify Results",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1120, 800],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "APIFY_CREDENTIALS_ID",
+          "name": "Apify API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "duplicateItem": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "text",
+              "name": "text",
+              "value": "={{ $json.text || $json.desc || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "views",
+              "name": "views",
+              "value": "={{ $json.playCount || 0 }}",
+              "type": "number"
+            }
+          ]
+        }
+      },
+      "id": "extract-field-lower",
+      "name": "Extract from Field",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1340, 800]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.apify.com/v2/acts/apify~instagram-scraper/runs?token={{$credentials.apifyApiToken}}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"usernames\": [\"AI_INSTAGRAM_1\"],\n  \"resultsLimit\": 20\n}"
+      },
+      "id": "description-patterns",
+      "name": "Description patterns",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1560, 800],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "APIFY_CREDENTIALS_ID",
+          "name": "Apify API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": 30,
+        "unit": "seconds"
+      },
+      "id": "wait-apify-2",
+      "name": "Wait2",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [1780, 800]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://api.apify.com/v2/acts/apify~instagram-scraper/runs/last/dataset/items?token={{$credentials.apifyApiToken}}"
+      },
+      "id": "get-ig-results",
+      "name": "Get IG Results",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2000, 800],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "APIFY_CREDENTIALS_ID",
+          "name": "Apify API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "duplicateItem": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "text",
+              "name": "text",
+              "value": "={{ $json.caption || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "views",
+              "name": "views",
+              "value": "={{ $json.videoPlayCount || 0 }}",
+              "type": "number"
+            }
+          ]
+        }
+      },
+      "id": "extract-field-lower-2",
+      "name": "Extract from Field2",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [2220, 800]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://openrouter.ai/api/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"google/gemini-2.0-flash-001\",\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"Проанализируй эти посты конкурентов про AI:\\n{{ $json.text }}\\n\\nВыдели топ-3 темы и форматы.\"\n    }\n  ]\n}"
+      },
+      "id": "openrouter-lower",
+      "name": "OpenRouter Chat Model",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2440, 800],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "OPENROUTER_CREDENTIALS_ID",
+          "name": "OpenRouter API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Подготовка данных из нижней ветки\nconst data = $input.first().json;\nconst analysis = data.choices?.[0]?.message?.content || '';\n\nreturn [{\n  json: {\n    competitor_analysis: analysis,\n    source: 'lower_branch'\n  }\n}];"
+      },
+      "id": "code-lower",
+      "name": "Code",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2660, 800]
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "duplicateItem": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "competitor_analysis",
+              "name": "competitor_analysis",
+              "value": "={{ $json.competitor_analysis }}",
+              "type": "string"
+            },
+            {
+              "id": "source",
+              "name": "source",
+              "value": "lower_branch",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "id": "edit-fields-lower",
+      "name": "Edit Fields1",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [2880, 800]
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combinationMode": "multiplex",
+        "options": {}
+      },
+      "id": "merge-branches",
+      "name": "Merge",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [3100, 650]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.heygen.com/v2/video/generate",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"video_inputs\": [\n    {\n      \"character\": {\n        \"type\": \"avatar\",\n        \"avatar_id\": \"YOUR_AVATAR_ID\",\n        \"avatar_style\": \"normal\"\n      },\n      \"voice\": {\n        \"type\": \"text\",\n        \"input_text\": \"{{ $json.full_script }}\",\n        \"voice_id\": \"YOUR_VOICE_ID\",\n        \"speed\": 1.1\n      }\n    }\n  ],\n  \"dimension\": {\n    \"width\": 1080,\n    \"height\": 1920\n  }\n}",
+        "options": {}
+      },
+      "id": "http-request",
+      "name": "HTTP Request",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [3320, 650],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "HEYGEN_CREDENTIALS_ID",
+          "name": "HeyGen API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "YOUR_GOOGLE_SHEET_ID"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "Topics"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "id",
+              "lookupValue": "={{ $json.id }}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "status": "video_generating",
+            "video_id": "={{ $json.data?.video_id }}"
+          }
+        }
+      },
+      "id": "sheets-update",
+      "name": "Google Sheets Update",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [3540, 650],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "GOOGLE_SHEETS_CREDENTIALS_ID",
+          "name": "Google Sheets"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## TikTok AI lifehacks\n\nДве параллельные ветки:\n1. Верхняя: Sheets → обработка тем → LLM генерация\n2. Нижняя: Apify парсинг конкурентов → анализ\n\nОбе сходятся в Merge → HeyGen → Sheets",
+        "height": 140,
+        "width": 340,
+        "color": 6
+      },
+      "id": "sticky-title",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [240, 300]
+    }
+  ],
+  "connections": {
+    "Schedule Trigger3": {
+      "main": [
+        [
+          {
+            "node": "Get row(s) in sheet2",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Headline patterns",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet2": {
+      "main": [
+        [
+          {
+            "node": "Sort",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sort": {
+      "main": [
+        [
+          {
+            "node": "Filter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter": {
+      "main": [
+        [
+          {
+            "node": "Limit2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Limit2": {
+      "main": [
+        [
+          {
+            "node": "Sort0",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sort0": {
+      "main": [
+        [
+          {
+            "node": "Limit5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Limit5": {
+      "main": [
+        [
+          {
+            "node": "Code5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code5": {
+      "main": [
+        [
+          {
+            "node": "Автоответ",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Автоответ": {
+      "main": [
+        [
+          {
+            "node": "Code0",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code0": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain": {
+      "main": [
+        [
+          {
+            "node": "Code4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code4": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Headline patterns": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Get Apify Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Apify Results": {
+      "main": [
+        [
+          {
+            "node": "Extract from Field",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from Field": {
+      "main": [
+        [
+          {
+            "node": "Description patterns",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Description patterns": {
+      "main": [
+        [
+          {
+            "node": "Wait2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait2": {
+      "main": [
+        [
+          {
+            "node": "Get IG Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get IG Results": {
+      "main": [
+        [
+          {
+            "node": "Extract from Field2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from Field2": {
+      "main": [
+        [
+          {
+            "node": "OpenRouter Chat Model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields1": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Google Sheets Update",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "content-factory"
+    }
+  ],
+  "triggerCount": 1
+}

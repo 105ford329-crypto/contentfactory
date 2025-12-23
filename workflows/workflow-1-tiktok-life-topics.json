@@ -1,0 +1,819 @@
+{
+  "name": "TikTok Life Topics - Парсинг и генерация тем",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 24,
+              "triggerAtHour": 9
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.apify.com/v2/acts/clockworks~tiktok-scraper/runs?token={{$credentials.apifyApiToken}}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"profiles\": [\n    \"COMPETITOR_USERNAME_1\",\n    \"COMPETITOR_USERNAME_2\",\n    \"COMPETITOR_USERNAME_3\"\n  ],\n  \"resultsPerPage\": 50,\n  \"shouldDownloadVideos\": false,\n  \"shouldDownloadCovers\": false\n}"
+      },
+      "id": "headline-patterns-2",
+      "name": "Headline patterns2",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [460, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "APIFY_CREDENTIALS_ID",
+          "name": "Apify API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.apify.com/v2/acts/clockworks~tiktok-scraper/runs?token={{$credentials.apifyApiToken}}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"profiles\": [\n    \"COMPETITOR_USERNAME_4\",\n    \"COMPETITOR_USERNAME_5\"\n  ],\n  \"resultsPerPage\": 50,\n  \"shouldDownloadVideos\": false,\n  \"shouldDownloadCovers\": false\n}"
+      },
+      "id": "headline-patterns-1",
+      "name": "Headline patterns1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [460, 500],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "APIFY_CREDENTIALS_ID",
+          "name": "Apify API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.apify.com/v2/acts/apify~instagram-scraper/runs?token={{$credentials.apifyApiToken}}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"usernames\": [\n    \"INSTAGRAM_COMPETITOR_1\",\n    \"INSTAGRAM_COMPETITOR_2\"\n  ],\n  \"resultsLimit\": 30\n}"
+      },
+      "id": "description-patterns-1",
+      "name": "Description patterns1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [460, 700],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "APIFY_CREDENTIALS_ID",
+          "name": "Apify API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": 30,
+        "unit": "seconds"
+      },
+      "id": "wait-scraper-1",
+      "name": "Wait1",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "amount": 30,
+        "unit": "seconds"
+      },
+      "id": "wait-scraper-2",
+      "name": "Wait2",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [680, 500]
+    },
+    {
+      "parameters": {
+        "amount": 30,
+        "unit": "seconds"
+      },
+      "id": "wait-scraper-3",
+      "name": "Wait3",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [680, 700]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://api.apify.com/v2/acts/clockworks~tiktok-scraper/runs/last/dataset/items?token={{$credentials.apifyApiToken}}"
+      },
+      "id": "get-results-1",
+      "name": "Get Results 1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [900, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "APIFY_CREDENTIALS_ID",
+          "name": "Apify API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://api.apify.com/v2/acts/clockworks~tiktok-scraper/runs/last/dataset/items?token={{$credentials.apifyApiToken}}"
+      },
+      "id": "get-results-2",
+      "name": "Get Results 2",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [900, 500],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "APIFY_CREDENTIALS_ID",
+          "name": "Apify API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://api.apify.com/v2/acts/apify~instagram-scraper/runs/last/dataset/items?token={{$credentials.apifyApiToken}}"
+      },
+      "id": "get-results-3",
+      "name": "Get Results 3",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [900, 700],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "APIFY_CREDENTIALS_ID",
+          "name": "Apify API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "duplicateItem": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "text",
+              "name": "text",
+              "value": "={{ $json.text || $json.desc || $json.caption || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "views",
+              "name": "views",
+              "value": "={{ $json.playCount || $json.stats?.playCount || $json.videoPlayCount || 0 }}",
+              "type": "number"
+            },
+            {
+              "id": "likes",
+              "name": "likes",
+              "value": "={{ $json.diggCount || $json.stats?.diggCount || $json.likesCount || 0 }}",
+              "type": "number"
+            },
+            {
+              "id": "source",
+              "name": "source",
+              "value": "tiktok_headlines",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "id": "extract-field-1",
+      "name": "Extract from Field",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "duplicateItem": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "text",
+              "name": "text",
+              "value": "={{ $json.text || $json.desc || $json.caption || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "views",
+              "name": "views",
+              "value": "={{ $json.playCount || $json.stats?.playCount || $json.videoPlayCount || 0 }}",
+              "type": "number"
+            },
+            {
+              "id": "likes",
+              "name": "likes",
+              "value": "={{ $json.diggCount || $json.stats?.diggCount || $json.likesCount || 0 }}",
+              "type": "number"
+            },
+            {
+              "id": "source",
+              "name": "source",
+              "value": "tiktok_headlines_2",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "id": "extract-field-2",
+      "name": "Extract from Field1",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1120, 500]
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "duplicateItem": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "text",
+              "name": "text",
+              "value": "={{ $json.caption || $json.text || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "views",
+              "name": "views",
+              "value": "={{ $json.videoPlayCount || $json.playCount || 0 }}",
+              "type": "number"
+            },
+            {
+              "id": "likes",
+              "name": "likes",
+              "value": "={{ $json.likesCount || $json.diggCount || 0 }}",
+              "type": "number"
+            },
+            {
+              "id": "source",
+              "name": "source",
+              "value": "instagram_descriptions",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "id": "extract-field-3",
+      "name": "Extract from Field2",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1120, 700]
+    },
+    {
+      "parameters": {
+        "sortFieldsUi": {
+          "sortField": [
+            {
+              "fieldName": "views",
+              "order": "descending"
+            }
+          ]
+        }
+      },
+      "id": "sort-0",
+      "name": "Sort0",
+      "type": "n8n-nodes-base.sort",
+      "typeVersion": 1,
+      "position": [1340, 300]
+    },
+    {
+      "parameters": {
+        "maxItems": 20
+      },
+      "id": "limit-0",
+      "name": "Limit0",
+      "type": "n8n-nodes-base.limit",
+      "typeVersion": 1,
+      "position": [1560, 300]
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combinationMode": "mergeByPosition",
+        "options": {}
+      },
+      "id": "merge-patterns",
+      "name": "Merge Patterns",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [1560, 550]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Объединяем все паттерны в один массив для анализа\nconst items = $input.all();\n\nconst headlines = [];\nconst descriptions = [];\n\nfor (const item of items) {\n  const data = item.json;\n  if (data.source === 'tiktok_headlines' || data.source === 'tiktok_headlines_2') {\n    headlines.push({\n      text: data.text,\n      views: data.views,\n      likes: data.likes\n    });\n  } else if (data.source === 'instagram_descriptions') {\n    descriptions.push({\n      text: data.text,\n      views: data.views,\n      likes: data.likes\n    });\n  }\n}\n\n// Сортируем по просмотрам\nheadlines.sort((a, b) => b.views - a.views);\ndescriptions.sort((a, b) => b.views - a.views);\n\nconst topHeadlines = headlines.slice(0, 15).map((h, i) => \n  `${i+1}. [${h.views} views] ${h.text}`\n).join('\\n');\n\nconst topDescriptions = descriptions.slice(0, 10).map((d, i) => \n  `${i+1}. [${d.views} views] ${d.text}`\n).join('\\n');\n\nreturn [{\n  json: {\n    headlines_data: topHeadlines,\n    descriptions_data: topDescriptions,\n    total_headlines: headlines.length,\n    total_descriptions: descriptions.length\n  }\n}];"
+      },
+      "id": "code-prepare",
+      "name": "Code - Подготовка",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1780, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://openrouter.ai/api/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"google/gemini-2.0-flash-001\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"Ты — аналитик трендов социальных сетей. Анализируешь контент и выделяешь паттерны.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"Проанализируй успешные посты конкурентов.\\n\\n## ЗАГОЛОВКИ (TikTok):\\n{{ $json.headlines_data }}\\n\\n## ОПИСАНИЯ (Instagram):\\n{{ $json.descriptions_data }}\\n\\nВыдели:\\n1. Топ-5 работающих тем\\n2. Паттерны хуков (первые слова)\\n3. Эмоциональные триггеры\\n4. Форматы которые залетают\\n5. Оптимальная структура\\n\\nОтвет в JSON.\"\n    }\n  ]\n}"
+      },
+      "id": "openrouter-analysis",
+      "name": "OpenRouter Chat Model",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2000, 400],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "OPENROUTER_CREDENTIALS_ID",
+          "name": "OpenRouter API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "duplicateItem": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "analysis",
+              "name": "analysis",
+              "value": "={{ $json.choices[0].message.content }}",
+              "type": "string"
+            },
+            {
+              "id": "headlines_data",
+              "name": "headlines_data",
+              "value": "={{ $('Code - Подготовка').item.json.headlines_data }}",
+              "type": "string"
+            },
+            {
+              "id": "descriptions_data",
+              "name": "descriptions_data",
+              "value": "={{ $('Code - Подготовка').item.json.descriptions_data }}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "id": "set-analysis",
+      "name": "Автоответ",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [2220, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://openrouter.ai/api/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"anthropic/claude-3.5-sonnet\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"Ты — копирайтер для коротких видео. Пишешь вовлекающие тексты для Reels/TikTok.\\n\\nСТИЛЬ (настрой под себя):\\n- Дружелюбный, экспертный тон\\n- Короткие предложения\\n- Вопросы к аудитории\\n- Практические советы\\n- Сильный CTA\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"На основе анализа трендов:\\n{{ $json.analysis }}\\n\\nПримеры успешных заголовков:\\n{{ $json.headlines_data }}\\n\\nСгенерируй 5 уникальных тем для рилсов.\\n\\nДля каждой:\\n1. hook - цепляющие первые 3 секунды\\n2. body - основной текст (30-60 сек)\\n3. cta - призыв к действию\\n4. description - описание поста\\n5. hashtags - 5-7 хэштегов\\n\\nВерни JSON массив.\"\n    }\n  ]\n}"
+      },
+      "id": "openrouter-generation",
+      "name": "Basic LLM Chain",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2440, 400],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "OPENROUTER_CREDENTIALS_ID",
+          "name": "OpenRouter API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Парсим ответ Claude\nconst response = $input.first().json;\nconst content = response.choices[0].message.content;\n\nlet topics = [];\ntry {\n  const jsonMatch = content.match(/\\[\\s*\\{[\\s\\S]*\\}\\s*\\]/);\n  if (jsonMatch) {\n    topics = JSON.parse(jsonMatch[0]);\n  } else {\n    topics = JSON.parse(content);\n  }\n} catch (e) {\n  return [{ json: { error: 'Parse failed', raw: content } }];\n}\n\nconst now = new Date().toISOString();\nreturn topics.map((topic, i) => ({\n  json: {\n    id: `topic_${Date.now()}_${i}`,\n    created_at: now,\n    status: 'pending',\n    ...topic,\n    full_script: `${topic.hook || ''} ${topic.body || ''} ${topic.cta || ''}`\n  }\n}));"
+      },
+      "id": "code-parse",
+      "name": "Code",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2660, 400]
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "duplicateItem": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "id",
+              "name": "id",
+              "value": "={{ $json.id }}",
+              "type": "string"
+            },
+            {
+              "id": "created_at",
+              "name": "created_at",
+              "value": "={{ $json.created_at }}",
+              "type": "string"
+            },
+            {
+              "id": "status",
+              "name": "status",
+              "value": "={{ $json.status }}",
+              "type": "string"
+            },
+            {
+              "id": "hook",
+              "name": "hook",
+              "value": "={{ $json.hook }}",
+              "type": "string"
+            },
+            {
+              "id": "body",
+              "name": "body",
+              "value": "={{ $json.body }}",
+              "type": "string"
+            },
+            {
+              "id": "cta",
+              "name": "cta",
+              "value": "={{ $json.cta }}",
+              "type": "string"
+            },
+            {
+              "id": "description",
+              "name": "description",
+              "value": "={{ $json.description }}",
+              "type": "string"
+            },
+            {
+              "id": "hashtags",
+              "name": "hashtags",
+              "value": "={{ Array.isArray($json.hashtags) ? $json.hashtags.join(' ') : $json.hashtags }}",
+              "type": "string"
+            },
+            {
+              "id": "full_script",
+              "name": "full_script",
+              "value": "={{ $json.full_script }}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "id": "edit-fields",
+      "name": "Edit Fields",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [2880, 400]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "YOUR_GOOGLE_SHEET_ID"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "Topics"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id": "={{ $json.id }}",
+            "created_at": "={{ $json.created_at }}",
+            "status": "={{ $json.status }}",
+            "hook": "={{ $json.hook }}",
+            "body": "={{ $json.body }}",
+            "cta": "={{ $json.cta }}",
+            "description": "={{ $json.description }}",
+            "hashtags": "={{ $json.hashtags }}",
+            "full_script": "={{ $json.full_script }}"
+          }
+        }
+      },
+      "id": "google-sheets-save",
+      "name": "Google Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [3100, 400],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "GOOGLE_SHEETS_CREDENTIALS_ID",
+          "name": "Google Sheets"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## Получение темы и описания\n\nWorkflow парсит конкурентов из TikTok и Instagram,\nанализирует тренды и генерирует темы для рилсов.",
+        "height": 120,
+        "width": 400,
+        "color": 7
+      },
+      "id": "sticky-title",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [240, 160]
+    },
+    {
+      "parameters": {
+        "content": "## ⚙️ НАСТРОЙКА\n\n**Apify:**\n- COMPETITOR_USERNAME_1-5 — TikTok аккаунты\n- INSTAGRAM_COMPETITOR_1-2 — Instagram аккаунты\n\n**OpenRouter:**\n- API Key для Gemini + Claude\n\n**Google Sheets:**\n- Лист 'Topics' с колонками:\n  id, created_at, status, hook, body, cta, description, hashtags, full_script",
+        "height": 260,
+        "width": 300
+      },
+      "id": "sticky-setup",
+      "name": "Sticky Note1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [60, 300]
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Headline patterns2",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Headline patterns1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Description patterns1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Headline patterns2": {
+      "main": [
+        [
+          {
+            "node": "Wait1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Headline patterns1": {
+      "main": [
+        [
+          {
+            "node": "Wait2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Description patterns1": {
+      "main": [
+        [
+          {
+            "node": "Wait3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait1": {
+      "main": [
+        [
+          {
+            "node": "Get Results 1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait2": {
+      "main": [
+        [
+          {
+            "node": "Get Results 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait3": {
+      "main": [
+        [
+          {
+            "node": "Get Results 3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Results 1": {
+      "main": [
+        [
+          {
+            "node": "Extract from Field",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Results 2": {
+      "main": [
+        [
+          {
+            "node": "Extract from Field1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Results 3": {
+      "main": [
+        [
+          {
+            "node": "Extract from Field2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from Field": {
+      "main": [
+        [
+          {
+            "node": "Sort0",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sort0": {
+      "main": [
+        [
+          {
+            "node": "Limit0",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Limit0": {
+      "main": [
+        [
+          {
+            "node": "Merge Patterns",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from Field1": {
+      "main": [
+        [
+          {
+            "node": "Merge Patterns",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Extract from Field2": {
+      "main": [
+        [
+          {
+            "node": "Merge Patterns",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Merge Patterns": {
+      "main": [
+        [
+          {
+            "node": "Code - Подготовка",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Подготовка": {
+      "main": [
+        [
+          {
+            "node": "OpenRouter Chat Model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model": {
+      "main": [
+        [
+          {
+            "node": "Автоответ",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Автоответ": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Google Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "content-factory"
+    }
+  ],
+  "triggerCount": 1
+}
