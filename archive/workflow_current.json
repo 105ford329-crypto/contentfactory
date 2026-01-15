@@ -1,0 +1,2518 @@
+{
+  "updatedAt": "2026-01-12T07:14:41.948Z",
+  "createdAt": "2025-12-20T10:12:39.875Z",
+  "id": "UXpFLGUwd9MVn1AZ",
+  "name": "Video_creator_AI_agent_FIXED1",
+  "description": null,
+  "active": true,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=={{ $('Триггер Telegram (входящее сообщение)').item.json.message.text }} \n\n\nТекущая дата и время:\n📅 Сегодня — {{ $now.format('cccc') }}\n🕒 Время — {{ $now.format('yyyy-MM-dd HH:mm') }}\n",
+        "options": {
+          "systemMessage": "Ты — ассистент для создания коротких видео.\n\n⛔ КРИТИЧЕСКИЕ ПРАВИЛА\n\n1. НИКОГДА НЕ ВЫДУМЫВАЙ ссылки! Используй ТОЛЬКО video_url из ответа инструмента\n2. Если video_url пустой/null — скажи \"⏳ Видео генерируется, task_id: [id]\"\n3. ВСЕГДА показывай пользователю ТОЧНЫЙ ответ инструмента, включая ошибки!\n\n═══════════════════════════════════════════════════════════════\n\n📍 ГЕНЕРАЦИЯ AI-ВИДЕО\n\n⚠️ ПЕРЕД ГЕНЕРАЦИЕЙ — ВСЕГДА СПРОСИ ПОДТВЕРЖДЕНИЕ!\n\nКогда пользователь просит видео:\n1. Покажи что будет сгенерировано:\n   • Промпт (на английском)\n   • Модель: Kling или Veo3\n   • Длительность: 5 или 10 сек\n   • Формат: 9:16 (вертикальное)\n\n2. Спроси: \"Начинаем генерацию? (да/нет)\"\n\n3. ТОЛЬКО после \"да\", \"давай\", \"го\", \"начинай\" — вызывай Smart_video_generator\n\nПараметры вызова:\n• prompt: описание сцены на АНГЛИЙСКОМ\n• model: \"kling\" (по умолчанию) или \"veo3\"\n• duration: 5\n• aspect_ratio: \"9:16\"\n\n═══════════════════════════════════════════════════════════════\n\n📍 ПОСЛЕ ОТВЕТА ИНСТРУМЕНТА\n\n• Если video_url есть → \"✅ Видео готово: [video_url]\"\n• Если video_url = null и status = processing → \"⏳ Генерируется, task_id: [task_id]\"\n• Если есть error → \"❌ Ошибка: [точный текст ошибки]\"\n\n═══════════════════════════════════════════════════════════════\n\n📍 ДОБАВЛЕНИЕ ТИТРОВ НА ВИДЕО\n\nКогда пользователь хочет добавить текст/титры на видео:\n1. Запроси video_url (ссылка на видео)\n2. Запроси subtitles_text (текст титров)\n3. Уточни параметры (опционально):\n   • Шрифт: dejavu (по умолчанию), ubuntu, roboto, ptsans, opensans\n   • Позиция: bottom (по умолчанию), top, center\n   • Цвет: white (по умолчанию), yellow, red\n   • Фон: включён по умолчанию (black@0.5)\n4. Вызови Video_subtitles_tool\n\n═══════════════════════════════════════════════════════════════\n\n📍 ДРУГИЕ ФУНКЦИИ\n\n• \"с аватаром\", \"говорящая голова\" → Video_maker\n• \"проанализируй\", \"тренды\" → Instagram_reels_scraper\n• \"статус\", \"готово\" + task_id → Video_status_checker\n• \"добавь текст\", \"титры\", \"надпись\" → Video_subtitles_tool\n\n═══════════════════════════════════════════════════════════════\n\n🧰 ИНСТРУМЕНТЫ\n• Smart_video_generator — AI-видео (Kling, Veo3)\n• Video_maker — видео с аватаром (HeyGen)\n• Video_status_checker — проверка статуса HeyGen\n• Instagram_reels_scraper — анализ Reels\n• Video_subtitles_tool — добавление титров на видео (поддержка кириллицы)",
+          "passthroughBinaryImages": true
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.8,
+      "position": [
+        1256,
+        1432
+      ],
+      "id": "42eb9ccf-c5e9-4eee-8644-c8835b91d5aa",
+      "name": "AI Agent",
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "name": "Video_maker",
+        "description": "PURPOSE\nЗапускает workflow «Video_maker» для генерации вертикального 9:16 видео (Reels / Shorts / TikTok)\nна основе финального, утверждённого сценария, используя сервис HeyGen.\n\nINPUT (оба поля обязательны)\n• video_description – 1–2 предложения с кратким описанием идеи/смысла видео (без лишних кавычек).\n• script             – готовый текст сценария / субтитров для видео (без кавычек, цельный текст).\n\nCALL RULES\n1. Вызывай этот инструмент ТОЛЬКО после явного подтверждения пользователя,\n   что он хочет сгенерировать видео (например: «да», «генерируй», «сделай ролик»).\n2. Перед вызовом у тебя уже должны быть:\n   • понятная идея ролика (video_description),\n   • финальный текст сценария (script), согласованный с пользователем.\n3. Передавай РОВНО эти два поля; не добавляй никаких других параметров в запрос.\n\nOUTPUT\n• Возвращает { \"pid\": \"<строка>\" } — уникальный идентификатор задачи рендера в HeyGen.\n\nNEXT STEP\nСразу после получения ответа:\n   • Возьми pid из ответа.\n   • Один раз вызови инструмент Video_status_checker — для первичной проверки статуса.\nДальнейшие проверки статуса выполняй ТОЛЬКО по запросу пользователя.\n",
+        "workflowId": {
+          "__rl": true,
+          "value": "8eH3FVDlqgbXCnx3",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/8eH3FVDlqgbXCnx3",
+          "cachedResultName": "Video_maker_FIXED1"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "video_description": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('video_description', ``, 'string') }}",
+            "script": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('script', ``, 'string') }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "video_description",
+              "displayName": "video_description",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "script",
+              "displayName": "script",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.1,
+      "position": [
+        1008,
+        1656
+      ],
+      "id": "f9af03ac-7376-4e9f-874f-2d18ae761c57",
+      "name": "Video_maker"
+    },
+    {
+      "parameters": {
+        "name": "Video_status_checker",
+        "description": "Этот инструмент проверяет статус генерации видео по pid, используя workflow «Video_status_checker».\nВнутри он обращается к API сервиса HeyGen и, при наличии готового результата, возвращает ссылку на видео.\n\nПРАВИЛА ИСПОЛЬЗОВАНИЯ\n• ВСЕГДА используй последний актуальный pid, полученный из инструмента Video_maker.\n• Если у тебя есть несколько pid (несколько роликов), кратко опиши пользователю каждый (по теме/описанию)\n  и уточни, для какого ролика нужно проверить статус.\n\nВОЗВРАТ\nИнструмент возвращает объект со статусом:\n• status   — строка, например \"building\" или \"ready\".\n• pid      — тот же идентификатор задачи.\n• videoUrl — ссылка на видео, если рендер завершён.\n\nЕсли статус \"building\", объясни пользователю, что видео ещё рендерится.\nЕсли статус \"ready\", отдай ссылку и напомни, какое именно видео было сгенерировано.\n",
+        "workflowId": {
+          "__rl": true,
+          "value": "XdAGbALeqfuVtxSA",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/XdAGbALeqfuVtxSA",
+          "cachedResultName": "Video_status_checker_FIXED1"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "pid": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('pid', `always use the latest current pid that was retrieved from the video maker tool.`, 'string') }}"
+          },
+          "matchingColumns": [
+            "pid"
+          ],
+          "schema": [
+            {
+              "id": "pid",
+              "displayName": "pid",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.1,
+      "position": [
+        1136,
+        1656
+      ],
+      "id": "d3fba601-8c69-4ca7-8fd5-4c5f864cea0a",
+      "name": "Video_status_checker"
+    },
+    {
+      "parameters": {
+        "name": "Smart_video_generator",
+        "description": "Генерирует AI-видео через PiAPI (Kling или Veo3).\n\nВход:\n• prompt — описание сцены на АНГЛИЙСКОМ языке\n• model — \"kling\" (по умолчанию) или \"veo3\"\n• duration — длительность в секундах (5 или 10)\n• aspect_ratio — соотношение сторон (\"9:16\" для вертикального)\n\nВозврат:\n• video_url — ссылка на готовое видео (если готово)\n• task_id — ID задачи для проверки статуса\n• status — статус генерации\n\nВАЖНО: Генерация занимает 1-3 минуты. Если video_url пустой — сообщи task_id пользователю.",
+        "workflowId": {
+          "__rl": true,
+          "value": "Smart_video_generator_FIXED1",
+          "mode": "name"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "prompt": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('prompt', 'Scene description in English', 'string') }}",
+            "model": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('model', 'kling or veo3', 'string') }}",
+            "duration": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('duration', '5 or 10 seconds', 'number') }}",
+            "aspect_ratio": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('aspect_ratio', '9:16 for vertical', 'string') }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "prompt",
+              "displayName": "prompt",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "model",
+              "displayName": "model",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "duration",
+              "displayName": "duration",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number"
+            },
+            {
+              "id": "aspect_ratio",
+              "displayName": "aspect_ratio",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.1,
+      "position": [
+        1392,
+        1656
+      ],
+      "id": "smart-video-gen-tool-001",
+      "name": "Smart_video_generator"
+    },
+    {
+      "parameters": {
+        "name": "Video_subtitles_tool",
+        "description": "Добавляет титры/текст на видео с поддержкой кириллицы.\n\nВход:\n• video_url — URL видео для обработки\n• subtitles_text — текст титров (поддержка русского языка)\n• font_name — шрифт (dejavu, ubuntu, roboto, ptsans, opensans и др.)\n• font_size — размер шрифта (по умолчанию 48)\n• font_color — цвет текста (white, yellow, red и т.д.)\n• position — позиция: top, center, bottom\n• background_enabled — включить фон под текстом (true/false)\n• background_color — цвет фона (black@0.5 для полупрозрачного)\n• start_time — время начала показа титров (секунды)\n• end_time — время окончания показа (секунды)\n\nВозврат:\n• video_url — ссылка на видео с титрами в Google Drive",
+        "workflowId": {
+          "__rl": true,
+          "value": "Video_subtitles_tool",
+          "mode": "name"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "video_url": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('video_url', 'URL of video to add subtitles', 'string') }}",
+            "subtitles_text": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('subtitles_text', 'Text to display on video', 'string') }}",
+            "font_name": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('font_name', 'Font name like dejavu, ubuntu, roboto', 'string') }}",
+            "font_size": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('font_size', 'Font size, default 48', 'number') }}",
+            "font_color": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('font_color', 'Text color like white, yellow', 'string') }}",
+            "position": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('position', 'Position: top, center, bottom', 'string') }}",
+            "background_enabled": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('background_enabled', 'Enable background box', 'boolean') }}",
+            "background_color": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('background_color', 'Background color like black@0.5', 'string') }}",
+            "start_time": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('start_time', 'Start time in seconds', 'number') }}",
+            "end_time": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('end_time', 'End time in seconds', 'number') }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "video_url",
+              "displayName": "video_url",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "subtitles_text",
+              "displayName": "subtitles_text",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "font_name",
+              "displayName": "font_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "font_size",
+              "displayName": "font_size",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number"
+            },
+            {
+              "id": "font_color",
+              "displayName": "font_color",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "position",
+              "displayName": "position",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "background_enabled",
+              "displayName": "background_enabled",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "boolean"
+            },
+            {
+              "id": "background_color",
+              "displayName": "background_color",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "start_time",
+              "displayName": "start_time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number"
+            },
+            {
+              "id": "end_time",
+              "displayName": "end_time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number"
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.1,
+      "position": [
+        1520,
+        1656
+      ],
+      "id": "video-subtitles-tool-agent",
+      "name": "Video_subtitles_tool"
+    },
+    {
+      "parameters": {
+        "description": "Используй этот инструмент для получения и анализа Reels из Instagram.\n\nВход:\n• username      — имя аккаунта Instagram (без @), если ищем по аккаунту.\n• resultLimits  — количество Reels для анализа (не более 50).\n• mode          — режим работы: by_account, by_topic или by_metrics.\n• keyword       — ключевое слово / ниша, если ищем по теме.\n• minViews      — минимальное количество просмотров, если нужно фильтровать по просмотрам.\n\nЧто делает инструмент внутри:\n1) Через ScrapeCreator получает Reels по аккаунту или по ключевому слову с учётом фильтров (например, по просмотрам).\n2) Для каждого видео запускается анализ через Gemini (через OpenRouter):\n   • строится подробный таймлайн, выделяются сцены, речь, текст, эмоции, механики вовлечения.\n3) На основе анализа формируются:\n   • категория, тема, оценка VIRALITY и ENGAGEMENT,\n   • ключевые механики,\n   • переписанный сценарий (RU/EN),\n   • хэштеги #TAGS.\n4) Все данные записываются в Google Sheets и индексируются в векторной базе Supabase.\n\nДальнейший анализ трендов и сценариев ты всегда делаешь через инструмент Vector_search_tool,\nкоторый обращается к этой векторной базе.\n\nУспешным результатом вызова считается ответ:\n«Анализ проведен успешно, данные загружены в google sheets и векторную базу данных.»\n\n\nНОВЫЕ ПАРАМЕТРЫ ФИЛЬТРАЦИИ:\n• minLikes - минимальное количество лайков\n• minComments - минимальное количество комментариев\n• minER - минимальный Engagement Rate в %\n• dateFrom - начало периода (YYYY-MM-DD)\n• dateTo - конец периода (YYYY-MM-DD)\n• daysBack - последние N дней\n• maxAge - ролики не старше N дней\n• sortBy - сортировка (engagement/views/recent/trending_score)\n• topN - сколько топовых роликов взять\n",
+        "workflowId": {
+          "__rl": true,
+          "value": "5UMcb39eTHhzILxt",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/5UMcb39eTHhzILxt",
+          "cachedResultName": "Instagram_Reels_Scraper_FIXED1"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "resultLimits": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('resultLimits', 'Number of reels to analyze, default 3', 'number') }}",
+            "minViews": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('minViews', 'Minimum views filter', 'number') }}",
+            "minLikes": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('minLikes', 'Minimum likes filter', 'number') }}",
+            "minComments": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('minComments', 'Minimum comments filter', 'number') }}",
+            "minER": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('minER', 'Minimum engagement rate', 'number') }}",
+            "daysBack": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('daysBack', 'Days back to search', 'number') }}",
+            "maxAge": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('maxAge', 'Max age of reels in days', 'number') }}",
+            "topN": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('topN', 'Top N reels to return', 'number') }}",
+            "username": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('username', 'Instagram username without @', 'string') }}",
+            "mode": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('mode', 'Mode: by_account, by_topic, by_metrics', 'string') }}",
+            "keyword": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('keyword', 'Keyword for topic search', 'string') }}",
+            "dateFrom": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('dateFrom', 'Start date YYYY-MM-DD', 'string') }}",
+            "dateTo": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('dateTo', 'End date YYYY-MM-DD', 'string') }}",
+            "sortBy": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('sortBy', 'Sort by: engagement, views, recent', 'string') }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "username",
+              "displayName": "username",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "resultLimits",
+              "displayName": "resultLimits",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number"
+            },
+            {
+              "id": "mode",
+              "displayName": "mode",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "keyword",
+              "displayName": "keyword",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "minViews",
+              "displayName": "minViews",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number"
+            },
+            {
+              "id": "minLikes",
+              "displayName": "minLikes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number"
+            },
+            {
+              "id": "minComments",
+              "displayName": "minComments",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number"
+            },
+            {
+              "id": "minER",
+              "displayName": "minER",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number"
+            },
+            {
+              "id": "dateFrom",
+              "displayName": "dateFrom",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "dateTo",
+              "displayName": "dateTo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "daysBack",
+              "displayName": "daysBack",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number"
+            },
+            {
+              "id": "maxAge",
+              "displayName": "maxAge",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number"
+            },
+            {
+              "id": "sortBy",
+              "displayName": "sortBy",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "topN",
+              "displayName": "topN",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number"
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        1264,
+        1656
+      ],
+      "id": "56db9627-965b-4251-8673-017a98a614fc",
+      "name": "Instagram_reels_scraper"
+    },
+    {
+      "parameters": {
+        "content": "Инструменты работы с видео и reels",
+        "height": 200,
+        "width": 1200
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        976,
+        1600
+      ],
+      "typeVersion": 1,
+      "id": "7df2379c-3042-48ef-ae95-ce1b02cdcc6b",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "updates": [
+          "message",
+          "callback_query"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        304,
+        2376
+      ],
+      "id": "efc44093-6276-4bc2-a83f-bf7b30ff9dfa",
+      "name": "Триггер Telegram (входящее сообщение)",
+      "webhookId": "807c3637-6795-4ffa-aa68-3213a670ea1e",
+      "credentials": {
+        "telegramApi": {
+          "id": "RpN2LGvNZWwqquLw",
+          "name": "VideoMaker"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4o-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        752,
+        1656
+      ],
+      "id": "c0d2b869-4c99-4831-b73f-158017bb5ab5",
+      "name": "Модель чата OpenAI",
+      "credentials": {
+        "openAiApi": {
+          "id": "BPj3GH3bI2f4q6aI",
+          "name": "OpenAi account 4"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "=user_{{ $('Триггер Telegram (входящее сообщение)').item.json.message.from.id }}\n",
+        "contextWindowLength": 10
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryPostgresChat",
+      "typeVersion": 1.3,
+      "position": [
+        880,
+        1656
+      ],
+      "id": "00a80946-cf46-4487-bd67-b3af91b80ab7",
+      "name": "Память диалога (Postgres)",
+      "credentials": {
+        "postgres": {
+          "id": "9cRi0vqQ4mtxZPs2",
+          "name": "Postgres Video_maker"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        1728,
+        1864
+      ],
+      "id": "c308f6b3-23a2-4811-8547-9f5d16046e89",
+      "name": "Векторизация текста (OpenAI)1",
+      "credentials": {
+        "openAiApi": {
+          "id": "BPj3GH3bI2f4q6aI",
+          "name": "OpenAi account 4"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "retrieve-as-tool",
+        "toolName": "video_trends_db",
+        "toolDescription": "База знаний об актуальных трендовых видео из инстаграма. Предназначена для поиска и ответа на пользовательские вопросы.",
+        "tableName": {
+          "__rl": true,
+          "value": "documents",
+          "mode": "list",
+          "cachedResultName": "documents"
+        },
+        "options": {
+          "queryName": "match_documents"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreSupabase",
+      "typeVersion": 1.1,
+      "position": [
+        1648,
+        1656
+      ],
+      "id": "fa151178-6a1c-475d-a041-88884cf0fcdb",
+      "name": "Векторная база трендов",
+      "credentials": {
+        "supabaseApi": {
+          "id": "XavzftuBevmNShcu",
+          "name": "Supabase video_maker"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Получаем текст - с защитой от undefined\nlet text = $json.output || $json.text || $json.message || '';\n\n// Если output пустой, пробуем взять video_url напрямую\nif (!text && $json.video_url) {\n  text = 'Видео готово! URL: ' + $json.video_url;\n}\n\n// Если всё ещё пусто\nif (!text) {\n  text = 'Результат получен, но текст пустой';\n}\n\n// Функция экранирования Markdown-спецсимволов\nfunction escapeMarkdownV2(text) {\n  if (!text || typeof text !== 'string') return '';\n  return text\n    .replace(/_/g, '\\\\_')\n    .replace(/\\*/g, '\\\\*')\n    .replace(/\\[/g, '\\\\[')\n    .replace(/\\]/g, '\\\\]')\n    .replace(/\\(/g, '\\\\(')\n    .replace(/\\)/g, '\\\\)')\n    .replace(/~/g, '\\\\~')\n    .replace(/`/g, '\\\\`')\n    .replace(/>/g, '\\\\>')\n    .replace(/#/g, '\\\\#')\n    .replace(/\\+/g, '\\\\+')\n    .replace(/-/g, '\\\\-')\n    .replace(/=/g, '\\\\=')\n    .replace(/\\|/g, '\\\\|')\n    .replace(/\\{/g, '\\\\{')\n    .replace(/\\}/g, '\\\\}')\n    .replace(/\\./g, '\\\\.')\n    .replace(/!/g, '\\\\!');\n}\n\nreturn [{\n  json: {\n    escapedText: escapeMarkdownV2(text),\n    originalText: text\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2272,
+        1640
+      ],
+      "id": "8157a129-afb5-4508-ada0-e246b2fc880b",
+      "name": "Экранирование Markdown (для Telegram)"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Триггер Telegram (входящее сообщение)').item.json.message.from.id }}",
+        "text": "={{ $json.escapedText }}\n",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "MarkdownV2"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        2496,
+        1640
+      ],
+      "id": "8efbe883-5ac3-4a5f-b11c-0b5366dd9911",
+      "name": "Ответ пользователю (Telegram)",
+      "webhookId": "bc0c9511-37bf-4bc9-a588-a0216c6162d7",
+      "credentials": {
+        "telegramApi": {
+          "id": "RpN2LGvNZWwqquLw",
+          "name": "VideoMaker"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "tableId": "chat_logs",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "session_id",
+              "fieldValue": "=user_{{ $('Триггер Telegram (входящее сообщение)').item.json.message.from.id }}"
+            },
+            {
+              "fieldId": "user_id",
+              "fieldValue": "={{ $('Триггер Telegram (входящее сообщение)').item.json.message.from.id }}"
+            },
+            {
+              "fieldId": "username",
+              "fieldValue": "={{ $('Триггер Telegram (входящее сообщение)').item.json.message.from.username }}"
+            },
+            {
+              "fieldId": "role",
+              "fieldValue": "assistant"
+            },
+            {
+              "fieldId": "content",
+              "fieldValue": "={{ $('AI Agent').item.json.output }}"
+            },
+            {
+              "fieldId": "created_at",
+              "fieldValue": "={{ new Date().toISOString().replace('T', ' ').split('.')[0] }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        2720,
+        1640
+      ],
+      "id": "f3108387-1964-4fc3-af43-ded5c83cae1b",
+      "name": "Supabase (лог исходящих)",
+      "credentials": {
+        "supabaseApi": {
+          "id": "XavzftuBevmNShcu",
+          "name": "Supabase video_maker"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "tableId": "=chat_logs",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "session_id",
+              "fieldValue": "=user_{{ $json.message.from.id }}"
+            },
+            {
+              "fieldId": "user_id",
+              "fieldValue": "={{ $json.message.from.id }}"
+            },
+            {
+              "fieldId": "username",
+              "fieldValue": "={{ $json.message.from.username }}"
+            },
+            {
+              "fieldId": "role",
+              "fieldValue": "human"
+            },
+            {
+              "fieldId": "content",
+              "fieldValue": "={{ $json.message.text }}"
+            },
+            {
+              "fieldId": "metadata",
+              "fieldValue": "="
+            },
+            {
+              "fieldId": "created_at",
+              "fieldValue": "={{ new Date().toISOString().replace('T', ' ').split('.')[0] }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        80,
+        1640
+      ],
+      "id": "73415c66-f28c-433c-b916-c5de77c70386",
+      "name": "Supabase (лог входящих)",
+      "credentials": {
+        "supabaseApi": {
+          "id": "XavzftuBevmNShcu",
+          "name": "Supabase video_maker"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "callback_query_check",
+              "leftValue": "={{ $json.callback_query !== undefined }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -368,
+        1592
+      ],
+      "id": "c7c395fe-8380-4fa2-b8c8-6acff6403f6f",
+      "name": "Switch: Callback или Message"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "preset_params",
+              "name": "preset_name",
+              "value": "={{ $json.callback_query.data }}",
+              "type": "string"
+            },
+            {
+              "id": "chat_id",
+              "name": "chat_id",
+              "value": "={{ $json.callback_query.message.chat.id }}",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        304,
+        1200
+      ],
+      "id": "d7bbdc7b-9f12-4540-8d82-c026353d7ed8",
+      "name": "Извлечь данные callback"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "pv",
+              "name": "filter_params",
+              "value": "={{ JSON.stringify({minViews:10000,minER:3.0,sortBy:\"engagement\",topN:10,daysBack:30}) }}",
+              "type": "string"
+            },
+            {
+              "id": "pd",
+              "name": "preset_display_name",
+              "value": "Viral",
+              "type": "string"
+            },
+            {
+              "id": "a93bd80e-bf9f-4fad-924e-e62c8609c605",
+              "name": "chat_id",
+              "value": "={{ $json.chat_id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1792,
+        -64
+      ],
+      "id": "2c9d4992-c17c-4351-8f4f-4107e47879c8",
+      "name": "Параметры: Вирусные"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "fp",
+              "name": "filter_params",
+              "value": "={{ JSON.stringify({\"maxAge\":3,\"minViews\":5000,\"minER\":2.5,\"sortBy\":\"recent\",\"topN\":10}) }}",
+              "type": "string"
+            },
+            {
+              "id": "pdn",
+              "name": "preset_display_name",
+              "value": "Свежие",
+              "type": "string"
+            },
+            {
+              "id": "a8b768a8-0e23-4eef-a093-dfdde3eb9797",
+              "name": "=chat_id",
+              "value": "={{ $json.chat_id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1792,
+        128
+      ],
+      "id": "afb7f91e-0424-4b2e-90fe-0a28ccbfb5a6",
+      "name": "Параметры: Свежие"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "fp",
+              "name": "filter_params",
+              "value": "={{ JSON.stringify({\"daysBack\":7,\"minViews\":5000,\"minER\":2.0,\"sortBy\":\"trending_score\",\"topN\":15}) }}",
+              "type": "string"
+            },
+            {
+              "id": "pdn",
+              "name": "preset_display_name",
+              "value": "Трендовые",
+              "type": "string"
+            },
+            {
+              "id": "b4e3eae1-74f4-4cd6-ac72-247de2b0bb58",
+              "name": "chat_id",
+              "value": "={{ $json.chat_id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1792,
+        320
+      ],
+      "id": "e8db9649-e3a4-416b-b964-849c5d34847c",
+      "name": "Параметры: Трендовые"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "fp",
+              "name": "filter_params",
+              "value": "={{ JSON.stringify({\"daysBack\":30,\"minViews\":5000,\"minER\":2.0,\"sortBy\":\"engagement\",\"topN\":20}) }}",
+              "type": "string"
+            },
+            {
+              "id": "pdn",
+              "name": "preset_display_name",
+              "value": "За месяц",
+              "type": "string"
+            },
+            {
+              "id": "6b22bcb5-7f6f-4e5d-8b21-223961b4d7b7",
+              "name": "chat_id",
+              "value": "={{ $json.chat_id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1792,
+        512
+      ],
+      "id": "72950968-d6e0-49a8-93a6-fdec1815f55f",
+      "name": "Параметры: За месяц"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chat_id }}",
+        "text": "=Выбран режим: {{ $json.preset_name }}. Укажите username:\n",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        2240,
+        224
+      ],
+      "id": "bc663a1e-1de2-4f28-8b13-9b8a528f87a4",
+      "name": "Отправить подтверждение",
+      "webhookId": "confirm-001",
+      "credentials": {
+        "telegramApi": {
+          "id": "RpN2LGvNZWwqquLw",
+          "name": "VideoMaker"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "ca",
+              "leftValue": "={{ $('Триггер Telegram (входящее сообщение)').item.json.message.text }}",
+              "rightValue": "/start",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -144,
+        1640
+      ],
+      "id": "06a181cf-525c-4600-a7ac-d0b113490972",
+      "name": "Проверка: Запрос анализа?"
+    },
+    {
+      "parameters": {
+        "tableId": "user_presets",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "chat_id",
+              "fieldValue": "={{ $('Извлечь данные callback').item.json.chat_id }}\n"
+            },
+            {
+              "fieldId": "preset_name",
+              "fieldValue": "={{ $json.preset_display_name }}"
+            },
+            {
+              "fieldId": "filter_params",
+              "fieldValue": "={{ $json.filter_params }}"
+            },
+            {
+              "fieldId": "timestamp",
+              "fieldValue": "={{ $now.toISO() }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        2016,
+        224
+      ],
+      "id": "46e1de03-a084-4cab-aed2-1498c42392b7",
+      "name": "Сохранить preset в БД",
+      "credentials": {
+        "supabaseApi": {
+          "id": "XavzftuBevmNShcu",
+          "name": "Supabase video_maker"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "user_presets",
+        "limit": 1,
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "chat_id",
+              "condition": "eq",
+              "keyValue": "={{ $('Триггер Telegram (входящее сообщение)').item.json.message.from.id }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        304,
+        1640
+      ],
+      "id": "b7fd4046-015d-4e25-b7e3-09b701b4e8df",
+      "name": "Получить последний preset",
+      "credentials": {
+        "supabaseApi": {
+          "id": "XavzftuBevmNShcu",
+          "name": "Supabase video_maker"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Получаем сообщение напрямую из триггера\nconst triggerData = $('Триггер Telegram (входящее сообщение)').item.json;\nconst message = triggerData.message;\n\nconst presetResult = $input.first().json;\n\n// Преобразуем в массив если нужно\nconst presetData = Array.isArray(presetResult) ? presetResult : [presetResult];\n\n// Если preset найден\nif (presetData.length > 0 && presetData[0].timestamp) {\n  // Сортируем по timestamp (новые первыми)\n  presetData.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));\n  \n  const preset = presetData[0];\n  const timestamp = new Date(preset.timestamp);\n  const now = new Date();\n  const minutesAgo = (now - timestamp) / 1000 / 60;\n  \n  if (minutesAgo < 5) {\n    // Preset актуален\n    const filterParams = typeof preset.filter_params === 'string' \n      ? JSON.parse(preset.filter_params) \n      : preset.filter_params;\n    \n    return [{\n      json: {\n        message: message,\n        preset_active: true,\n        preset_name: preset.preset_name,\n        preset_params: filterParams\n      }\n    }];\n  }\n}\n\n// Preset не найден или устарел\nreturn [{\n  json: {\n    message: message,\n    preset_active: false\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        528,
+        1640
+      ],
+      "id": "53bc2e5a-cf6f-44fa-a2d7-cfdfb5d3bb81",
+      "name": "Объединить preset с message"
+    },
+    {
+      "parameters": {
+        "name": "Storyboard_generator",
+        "description": "Генерирует детальную раскадровку (storyboard) для видео на основе сценария.\n\nINPUT:\n• script - текст сценария для видео (обязательно)\n• video_duration - длительность видео в секундах (обязательно)\n• style - визуальный стиль (реалистичный, animated, cinematic и т.д.)\n\nЧТО ДЕЛАЕТ:\n1. Разбивает сценарий на сцены по ПРАВИЛУ 3 СЕКУНД (каждая сцена = 3 сек)\n2. Для каждой сцены генерирует:\n   - visual_prompt (детальное описание для AI-генератора)\n   - narration (текст озвучки)\n   - camera_movement (движение камеры)\n   - mood (настроение сцены)\n3. Сохраняет раскадровку в Google Sheets\n\nCALL RULES:\n1. Вызывай ПОСЛЕ того как пользователь утвердил сценарий\n2. Вызывай ПЕРЕД генерацией видео через Smart_video_generator\n3. Используй visual_prompt из каждой сцены как промпт для генератора\n\nOUTPUT:\n• scenes[] - массив сцен с visual prompts\n• total_scenes - количество сцен\n• estimated_duration - расчётная длительность\n\nПРИМЕР ИСПОЛЬЗОВАНИЯ:\n1. Пользователь утвердил сценарий на 60 секунд\n2. Вызываешь Storyboard_generator(script, 60, 'cinematic')\n3. Получаешь 20 сцен (60/3 = 20)\n4. Используешь visual_prompt каждой сцены для Smart_video_generator",
+        "workflowId": {
+          "__rl": true,
+          "value": "1zM4JnMJvTjyaiL6",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/1zM4JnMJvTjyaiL6",
+          "cachedResultName": "Storyboard_generator_FIXED1"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "script": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('script', 'Full video script text', 'string') }}",
+            "video_duration": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('video_duration', 'Video duration in seconds', 'number') }}",
+            "style": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('style', 'Visual style: realistic, animated, cinematic, etc.', 'string') }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "script",
+              "displayName": "script",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "video_duration",
+              "displayName": "video_duration",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number"
+            },
+            {
+              "id": "style",
+              "displayName": "style",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.1,
+      "position": [
+        2064,
+        1656
+      ],
+      "id": "c7ce8f44-a1fa-418a-89c0-0f7529985f24",
+      "name": "Storyboard_generator"
+    },
+    {
+      "parameters": {
+        "name": "Video_composer",
+        "description": "Комбинирует два видео: AI-фон + HeyGen (аватар) в единое видео.\n\nINPUT (все поля обязательны):\n• background_video_url - ссылка на AI-видео (Kling/Veo3) для фона\n• heygen_video_url - ссылка на видео HeyGen (аватар)\n• composition_mode - режим композиции (\"pip\" - picture-in-picture, \"overlay\" - наложение)\n\nCALL RULES:\n1. Сначала сгенерируй ОБА видео (Smart_video_generator + Video_maker)\n2. Дождись получения обеих ссылок (video_url)\n3. ПОТОМ вызывай Composer с этими ссылками\n4. НЕ вызывай до явного согласия пользователя\n\nOUTPUT:\n• composed_video_url - ссылка на финальное скомпонованное видео\n• status - статус композиции\n\nUSE CASES:\n• Аватар на фоне креативных AI-сцен\n• Многослойные видео эффекты\n• Picture-in-Picture формат",
+        "workflowId": {
+          "__rl": true,
+          "value": "qV0VlZzJKrUAibnI",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/qV0VlZzJKrUAibnI",
+          "cachedResultName": "Video_composer_FIXED1"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "heygen_video_url": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('heygen_video_url', 'URL of HeyGen-generated video (avatar)', 'string') }}",
+            "composition_mode": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('composition_mode', 'Composition mode: pip or overlay', 'string') }}",
+            "background_video_url": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('sora_video_url', 'URL of AI-generated (Kling/Veo3) video (background)', 'string') }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "background_video_url",
+              "displayName": "background_video_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "heygen_video_url",
+              "displayName": "heygen_video_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "composition_mode",
+              "displayName": "composition_mode",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.1,
+      "position": [
+        1936,
+        1656
+      ],
+      "id": "e29a4405-7219-4673-93b2-6c0e8885424e",
+      "name": "Video_composer"
+    },
+    {
+      "parameters": {
+        "content": "**Шаги:**\n\n▶️**1. Открыть основной сценарий** [Video creator](https://drive.google.com/file/d/1qYufXpnJTCTBfBvSsuGHq2_YANQsFMOX/view?usp=drivesdk)\n\n▶️2. **Использовать вспомогательные инструменты:**\n\n[Скрейпинг рилсов](https://drive.google.com/file/d/1M5qzZdgBdiH1LSSOipubqEyspsYNcySU/view)\n\n- **Как работает**:\n\nНа вход подаётся username (имя аккаунта) и resultLimits (сколько последних Reels выгрузить).\n\nИспользуем **ScrapeCreator Instagram Reels Scraper API, из него получаем**: ссылки на видео, описание, дату публикации, количество просмотров, лайков, комментариев, метаданные о музыке. Дальше данные идут в Google Sheets и в векторную базу (через Supabase). Это нужно чтобы анализировать чужие Reels, тренды и иметь материал для генерации видео.\n\nПосле этого скачивания Reels отправляется в **Gemini API. Gemini а**нализирует видео: сцены, действия, речь, эмоции, текст на экране. После уже возвращает структурированное описание всего видео (если видео лишком большое для диалогового окна, то нужно делить его на части)\n\nНа основе описания формирует HOOK / CONTENT / CTA / CAPTION / TAGS для таблицы и создания дальнейших видео.\n\n[Генерация видео.](https://drive.google.com/file/d/1-_qdIVfDCOvunQzhp0ufBa84qmmDh_BM/view) Идет создание самого видео через HeyGen\n\n[Проверка статуса.](https://drive.google.com/file/d/1wbzLioOjez-b3J3-p2nQoBRLRPiNPdG6/view) Проверяет, готово ли видео. Делает запрос в API HeyGen. Если видео ещё рендерится, то возвращает статус building.Если готово, то возвращает videoUrl. Далее обновляет Google Sheet (добавляет ссылку на готовое видео).\n\n▶️3. Дополнительно скопируйте себе таблицы [отсюда](https://docs.google.com/document/d/14feZc1YtLw-WUb8YgtgInbiqch2hB0k0nW_Ai7zVtRU/edit?tab=t.0)\n\n▶️4. В итоге получаем вертикальное видео с учетом трендов\n\nИтого весь процесс нужен так как:\n\nScraper (ScrapeCreator) собирает Reels конкурентов.\n\nАнализ (Gemini + OpenAI) делает раскадровку, хуки.\n\nVideo_maker (HeyGen) генерирует ваше видео по тренду.\n\nVideo_status_checker проверяет готовность и возвращает ссылку на результат с видео\n\nGoogle Sheets + Supabase сохраняют все данные (Reels, тренды, скрипты, готовые видео)\n\n➡️**Генерация видео через Video Creator через** Kling (сервис [piapi.ai](http://piapi.ai))\n\n**Шаги:**\n\n1. Открыть основной сценарий [Video creator](https://drive.google.com/drive/folders/1D59ZPAvIMwBPL3El6tqnoVXBNt2a4CmC)\n\n2. Запустить Execution (прогон сценария).\n\n3. Проверить результат → должен появиться новый рилс.\n\n4. Дополнительно данные отображаются [в таблице](https://docs.google.com/document/d/15GMpA7luw9lHj35T7IvOs3_I1kQSvcH7uZFLJ-yxzX0/edit?tab=t.0)",
+        "height": 1008,
+        "width": 848
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -2400,
+        -768
+      ],
+      "typeVersion": 1,
+      "id": "7433a02f-1d80-4b97-954f-21f3fb7cd746",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chat_id }}",
+        "text": "❓ Помощь\n\n🎥 Создать видео — генерация коротких видео:\n• AI-визуализация — креативные сцены (Kling/Veo3)\n• С аватаром — говорящая голова (HeyGen)\n• Комбо — аватар на AI-фоне\n\n📊 Анализ трендов — изучение конкурентов:\n• Скрейпинг Reels из Instagram\n• Анализ механик, хуков, форматов\n• Рекомендации для ваших видео\n\n🔍 Проверить статус — узнать готовность видео\n\n💡 Просто напишите, что хотите сделать!",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1792,
+        960
+      ],
+      "id": "menu-help",
+      "name": "Сообщение: Помощь",
+      "webhookId": "a74f6202-aa96-457b-9c5c-d44cb072b17e",
+      "credentials": {
+        "telegramApi": {
+          "id": "RpN2LGvNZWwqquLw",
+          "name": "VideoMaker"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chat_id }}",
+        "text": "🔍 Напишите ID задачи (task_id), чтобы проверить статус генерации видео.\n\nИли просто напишите \"статус\" — я проверю последнее видео.",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1792,
+        1392
+      ],
+      "id": "menu-check-status",
+      "name": "Сообщение: Проверить статус",
+      "webhookId": "25ba24b6-b6fb-45cf-9860-1909c35a26f9",
+      "credentials": {
+        "telegramApi": {
+          "id": "RpN2LGvNZWwqquLw",
+          "name": "VideoMaker"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chat_id }}",
+        "text": "🤖 AI-визуализация\n\nОпишите, какое видео хотите создать.\n\nПримеры:\n• Закат над океаном с медленным зумом\n• Футуристический город ночью\n• Абстрактные частицы в движении\n\n💡 Чем детальнее описание — тем лучше результат!",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1792,
+        -288
+      ],
+      "id": "prompt-ai-video",
+      "name": "Запрос: AI видео промпт",
+      "webhookId": "0c11a229-735b-4932-8d64-0806450e4e6a",
+      "credentials": {
+        "telegramApi": {
+          "id": "RpN2LGvNZWwqquLw",
+          "name": "VideoMaker"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chat_id }}",
+        "text": "👤 Видео с аватаром\n\nНапишите текст, который аватар будет произносить.\n\nПример:\n\"Привет! Сегодня расскажу вам 3 лайфхака для продуктивности...\"",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1792,
+        736
+      ],
+      "id": "prompt-avatar-video",
+      "name": "Запрос: Avatar скрипт",
+      "webhookId": "6cee58b5-6f16-4a0f-841c-e3121e4377bf",
+      "credentials": {
+        "telegramApi": {
+          "id": "RpN2LGvNZWwqquLw",
+          "name": "VideoMaker"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chat_id }}",
+        "text": "🎭 Комбо: AI-фон + Аватар\n\nСначала опишите фоновое видео:\n\nПример:\n\"Городской пейзаж с небоскрёбами, timelapse\"\n\nПосле генерации фона я попрошу текст для аватара.",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1792,
+        1184
+      ],
+      "id": "prompt-combo-video",
+      "name": "Запрос: Комбо видео",
+      "webhookId": "a8675a7a-de35-43f1-bd1c-2b7c166060d3",
+      "credentials": {
+        "telegramApi": {
+          "id": "RpN2LGvNZWwqquLw",
+          "name": "VideoMaker"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        -368,
+        3064
+      ],
+      "id": "error-trigger-001",
+      "name": "Error Trigger"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Формируем сообщение об ошибке\nconst error = $json;\nconst errorMsg = error.execution?.error?.message || error.message || 'Unknown error';\nconst nodeName = error.execution?.lastNodeExecuted || 'Unknown node';\n\n// Получаем chat_id из данных воркфлоу\nlet chatId = null;\ntry {\n  const workflowData = error.execution?.data?.resultData?.runData;\n  if (workflowData) {\n    const triggerData = workflowData['Telegram Trigger'] || workflowData['Триггер Telegram (входящее сообщение)'];\n    if (triggerData && triggerData[0]) {\n      chatId = triggerData[0].data?.main?.[0]?.[0]?.json?.message?.chat?.id;\n    }\n  }\n} catch(e) {}\n\nreturn [{\n  json: {\n    chatId: chatId,\n    errorText: 'Error in ' + nodeName + ': ' + errorMsg\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -144,
+        3064
+      ],
+      "id": "error-format-001",
+      "name": "Format Error"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "chat-check",
+              "leftValue": "={{ $json.chatId }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        80,
+        3064
+      ],
+      "id": "error-if-001",
+      "name": "Has ChatId?"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chatId }}",
+        "text": "=Error: {{ $json.errorText }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        304,
+        3064
+      ],
+      "id": "error-telegram-001",
+      "name": "Send Error to User",
+      "webhookId": "72ff6de5-9ee7-42d5-a424-1b40798598fa",
+      "credentials": {
+        "telegramApi": {
+          "id": "RpN2LGvNZWwqquLw",
+          "name": "VideoMaker"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.message.text }}",
+                    "rightValue": "/menu",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.message.text }}",
+                    "rightValue": "/analyze",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.message.text }}",
+                    "rightValue": "/create",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.message.text }}",
+                    "rightValue": "/tools",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.message.text }}",
+                    "rightValue": "/help",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "2e37a43b-4a7e-470d-a3fa-93ebb98a82d5",
+      "name": "Switch: Menu Commands",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [
+        528,
+        2328
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Триггер Telegram (входящее сообщение)').item.json.message.from.id }}",
+        "text": "📋 Главное меню\n\nTrendwatchAI Video Creator Bot\n\nВыберите действие:",
+        "replyMarkup": "inlineKeyboard",
+        "additionalFields": {}
+      },
+      "id": "7812f849-56b0-4497-b52f-35e8041c91ba",
+      "name": "Menu: Main Menu",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1400,
+        2040
+      ],
+      "webhookId": "aa5cbf94-e970-4fd5-8631-9d5e7ba085c5"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Триггер Telegram (входящее сообщение)').item.json.message.from.id }}",
+        "text": "📊 Анализ Instagram Reels\n\nЧто хотите проанализировать?",
+        "replyMarkup": "inlineKeyboard",
+        "additionalFields": {}
+      },
+      "id": "fe543caf-91ad-433d-a613-ae004a1c0720",
+      "name": "Menu: Analyze Submenu",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1400,
+        2232
+      ],
+      "webhookId": "3b8375ab-4596-4ad4-97fa-450d82fadd28"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Триггер Telegram (входящее сообщение)').item.json.message.from.id }}",
+        "text": "🎬 Создание видео\n\nВыберите тип генерации:",
+        "replyMarkup": "inlineKeyboard",
+        "additionalFields": {}
+      },
+      "id": "0465ba4f-d8ca-49ee-935e-80c48a6666af",
+      "name": "Menu: Create Submenu",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1400,
+        2424
+      ],
+      "webhookId": "05f765d4-3f0e-4e8a-abfa-3438e7c6ce71"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Триггер Telegram (входящее сообщение)').item.json.message.from.id }}",
+        "text": "🛠️ Инструменты\n\nДополнительные возможности:",
+        "replyMarkup": "inlineKeyboard",
+        "additionalFields": {}
+      },
+      "id": "a4040d40-da06-41a1-81f6-abb2b3ead784",
+      "name": "Menu: Tools Submenu",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1400,
+        2616
+      ],
+      "webhookId": "0ae39801-c219-4836-ba2c-f1d68e837622"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.callback_data }}",
+                    "rightValue": "menu_back",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.callback_data }}",
+                    "rightValue": "menu_analyze",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.callback_data }}",
+                    "rightValue": "menu_create",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.callback_data }}",
+                    "rightValue": "menu_tools",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.callback_data }}",
+                    "rightValue": "menu_help",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.callback_data }}",
+                    "rightValue": "analyze_account",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.callback_data }}",
+                    "rightValue": "analyze_keyword",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.callback_data }}",
+                    "rightValue": "analyze_single",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.callback_data }}",
+                    "rightValue": "search_similar",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.callback_data }}",
+                    "rightValue": "create_ai_video",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.callback_data }}",
+                    "rightValue": "create_avatar",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.callback_data }}",
+                    "rightValue": "create_storyboard",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.callback_data }}",
+                    "rightValue": "compose_video",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.callback_data }}",
+                    "rightValue": "add_subtitles",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.callback_data }}",
+                    "rightValue": "check_status",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "606d7212-8b38-48c3-958f-a44d4c83b564",
+      "name": "Route: Button Callbacks",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [
+        528,
+        992
+      ]
+    }
+  ],
+  "connections": {
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Экранирование Markdown (для Telegram)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Video_maker": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Video_status_checker": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Instagram_reels_scraper": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Smart_video_generator": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Video_subtitles_tool": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Триггер Telegram (входящее сообщение)": {
+      "main": [
+        [
+          {
+            "node": "Switch: Menu Commands",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Модель чата OpenAI": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Память диалога (Postgres)": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Векторизация текста (OpenAI)1": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Векторная база трендов",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Векторная база трендов": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Экранирование Markdown (для Telegram)": {
+      "main": [
+        [
+          {
+            "node": "Ответ пользователю (Telegram)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ответ пользователю (Telegram)": {
+      "main": [
+        [
+          {
+            "node": "Supabase (лог исходящих)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase (лог входящих)": {
+      "main": [
+        [
+          {
+            "node": "Получить последний preset",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch: Callback или Message": {
+      "main": [
+        [
+          {
+            "node": "Извлечь данные callback",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Проверка: Запрос анализа?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Параметры: Вирусные": {
+      "main": [
+        [
+          {
+            "node": "Сохранить preset в БД",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Параметры: Свежие": {
+      "main": [
+        [
+          {
+            "node": "Сохранить preset в БД",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Параметры: Трендовые": {
+      "main": [
+        [
+          {
+            "node": "Сохранить preset в БД",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Параметры: За месяц": {
+      "main": [
+        [
+          {
+            "node": "Сохранить preset в БД",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Проверка: Запрос анализа?": {
+      "main": [
+        [
+          {
+            "node": "Supabase (лог входящих)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Сохранить preset в БД": {
+      "main": [
+        [
+          {
+            "node": "Отправить подтверждение",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Получить последний preset": {
+      "main": [
+        [
+          {
+            "node": "Объединить preset с message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Объединить preset с message": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Video_composer": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Storyboard_generator": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Error Trigger": {
+      "main": [
+        [
+          {
+            "node": "Format Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Error": {
+      "main": [
+        [
+          {
+            "node": "Has ChatId?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has ChatId?": {
+      "main": [
+        [
+          {
+            "node": "Send Error to User",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch: Menu Commands": {
+      "main": [
+        [
+          {
+            "node": "Menu: Main Menu",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Menu: Analyze Submenu",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Menu: Create Submenu",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Menu: Tools Submenu",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Извлечь данные callback": {
+      "main": [
+        [
+          {
+            "node": "Route: Button Callbacks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route: Button Callbacks": {
+      "main": [
+        [
+          {
+            "node": "Menu: Main Menu",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Menu: Analyze Submenu",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Menu: Create Submenu",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Menu: Tools Submenu",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "meta": null,
+  "pinData": {},
+  "versionId": "26599cbb-d0a5-4a42-b7a0-d76fbedd6cb6",
+  "versionCounter": 205,
+  "triggerCount": 1,
+  "shared": [
+    {
+      "updatedAt": "2025-12-20T10:12:39.875Z",
+      "createdAt": "2025-12-20T10:12:39.875Z",
+      "role": "workflow:owner",
+      "workflowId": "UXpFLGUwd9MVn1AZ",
+      "projectId": "RBPPu9AATeVK4CWS",
+      "project": {
+        "updatedAt": "2025-09-12T08:23:30.032Z",
+        "createdAt": "2025-04-06T11:26:22.366Z",
+        "id": "RBPPu9AATeVK4CWS",
+        "name": "Ruslan 111 <105ford329@gmail.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "projectRelations": [
+          {
+            "updatedAt": "2025-04-06T11:26:22.366Z",
+            "createdAt": "2025-04-06T11:26:22.366Z",
+            "userId": "857820b0-f530-430a-b69c-96a0ec14e554",
+            "projectId": "RBPPu9AATeVK4CWS",
+            "user": {
+              "updatedAt": "2026-01-12T07:12:11.802Z",
+              "createdAt": "2025-04-06T11:26:21.157Z",
+              "id": "857820b0-f530-430a-b69c-96a0ec14e554",
+              "email": "105ford329@gmail.com",
+              "firstName": "Ruslan",
+              "lastName": "111",
+              "personalizationAnswers": null,
+              "settings": {
+                "userActivated": true,
+                "easyAIWorkflowOnboarded": true,
+                "firstSuccessfulWorkflowId": "28ntO5KaE2bWGofZ",
+                "userActivatedAt": 1746260344700,
+                "npsSurvey": {
+                  "responded": true,
+                  "lastShownAt": 1762343016289
+                },
+                "dismissedCallouts": {
+                  "preBuiltAgentsCalloutTelegram": true
+                }
+              },
+              "disabled": false,
+              "mfaEnabled": false,
+              "lastActiveAt": "2026-01-11",
+              "isPending": false
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "tags": []
+}

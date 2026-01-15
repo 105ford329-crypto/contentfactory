@@ -1,0 +1,67 @@
+{
+  "trigger": [
+    "Триггер Telegram (входящее сообщение)"
+  ],
+  "ai_agent": [
+    "AI Agent"
+  ],
+  "tools": [
+    "Video_maker",
+    "Video_status_checker",
+    "Smart_video_generator",
+    "Video_subtitles_tool",
+    "Instagram_reels_scraper",
+    "Storyboard_generator",
+    "Video_composer"
+  ],
+  "ai_components": [
+    "Модель чата OpenAI",
+    "Память диалога (Postgres)",
+    "Векторизация текста (OpenAI)1",
+    "Векторная база трендов"
+  ],
+  "switches": [
+    "Switch: Menu Commands",
+    "Route: Button Callbacks"
+  ],
+  "telegram_send": [],
+  "http_request": [],
+  "set_nodes": [
+    "Извлечь данные callback",
+    "Параметры: Вирусные",
+    "Параметры: Свежие",
+    "Параметры: Трендовые",
+    "Параметры: За месяц"
+  ],
+  "if_nodes": [
+    "Switch: Callback или Message",
+    "Проверка: Запрос анализа?",
+    "Has ChatId?"
+  ],
+  "error_handling": [
+    "Error Trigger",
+    "Format Error",
+    "Send Error to User"
+  ],
+  "other": [
+    "Sticky Note",
+    "Экранирование Markdown (для Telegram)",
+    "Ответ пользователю (Telegram)",
+    "Supabase (лог исходящих)",
+    "Supabase (лог входящих)",
+    "Отправить подтверждение",
+    "Сохранить preset в БД",
+    "Получить последний preset",
+    "Объединить preset с message",
+    "Sticky Note2",
+    "Сообщение: Помощь",
+    "Сообщение: Проверить статус",
+    "Запрос: AI видео промпт",
+    "Запрос: Avatar скрипт",
+    "Запрос: Комбо видео",
+    "Menu: Main Menu",
+    "Menu: Analyze Submenu",
+    "Menu: Create Submenu",
+    "Menu: Tools Submenu"
+  ]
+}
